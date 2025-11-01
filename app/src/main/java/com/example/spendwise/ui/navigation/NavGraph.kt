@@ -40,7 +40,9 @@ fun AppNavGraph(
         composable("list") { ExpenseListScreen(onMenuClick = onMenuClick) }
         composable("summary") { SummaryScreen(navController, onMenuClick = onMenuClick) }
         composable("categories") { CategoryScreen(navController, onMenuClick = onMenuClick) }
-        composable("about") { AboutScreen() }
+        composable("about") {
+            AboutScreen(navController, onMenuClick = onMenuClick)
+        }
         composable("budgets") { BudgetScreen(navController, onMenuClick = onMenuClick) }
         composable("recurring_expenses") {
             RecurringExpenseScreen(

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Category // ✅ Now you can import this!
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Leaderboard // ✅ A better icon for "Summary"
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Savings
@@ -92,14 +93,17 @@ fun AppDrawer(navController: NavController, onClose: () -> Unit) {
                 isSelected = currentRoute == "incomes",
                 onClick = { navController.navigate("incomes"); onClose() }
             )
-
-            Spacer(Modifier.weight(1f)) // This pushes the footer to the bottom
-
             DrawerItem(
                 label = "Settings",
                 icon = Icons.Default.Settings,
                 isSelected = currentRoute == "settings",
                 onClick = { navController.navigate("settings"); onClose() }
+            )
+            DrawerItem(
+                label = "About",
+                icon = Icons.Default.Info,
+                isSelected = currentRoute == "about",
+                onClick = { navController.navigate("about"); onClose() }
             )
 
             Spacer(Modifier.weight(1f)) // This pushes the footer to the bottom
