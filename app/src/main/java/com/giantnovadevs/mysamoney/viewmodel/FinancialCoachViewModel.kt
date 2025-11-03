@@ -1,6 +1,7 @@
 // FinancialCoachViewModel.kt
 package com.giantnovadevs.mysamoney.viewmodel
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,6 +20,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import com.giantnovadevs.mysamoney.ads.AdManager
 
 data class ChatMessage(
     val message: String,
@@ -73,9 +75,32 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val adManager = AdManager(app)
+
+    // This state tells the UI to show the "watch ad" dialog
+    private val _showAdDialog = MutableStateFlow(false)
+    val showAdDialog = _showAdDialog.asStateFlow()
+
+    // This tracks how many free messages the user has
+    private val _messageCredits = MutableStateFlow(1) // Start with 1 free credit
+    val messageCredits = _messageCredits.asStateFlow()
+
+    init {
+        // Pre-load an ad when the ViewModel is created
+        adManager.loadRewardedAd()
+    }
+
     fun askQuestion(question: String) {
+        // --- Check for credits ---
+        if (_messageCredits.value <= 0) {
+            _showAdDialog.value = true // Show the "watch ad" dialog
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
+            // Consume a credit
+            _messageCredits.value = _messageCredits.value - 1
             _uiState.value = _uiState.value + ChatMessage(question, isFromUser = true)
 
             try {
@@ -147,6 +172,23 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
         """.trimIndent()
     }
 
+    fun showRewardAd(activity: Activity) {
+        _showAdDialog.value = false // Close the dialog
+        adManager.showRewardedAd(activity) {
+            // This is the onRewardEarned callback!
+            // Give the user 3 new credits.
+            _messageCredits.value = _messageCredits.value + 3
+            // Pre-load the next ad
+            adManager.loadRewardedAd()
+        }
+    }
+
+    /**
+     * Called when the user closes the "watch ad" dialog.
+     */
+    fun dismissAdDialog() {
+        _showAdDialog.value = false
+    }
     private fun formatDate(timestamp: Long): String {
         val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
         return sdf.format(Date(timestamp))

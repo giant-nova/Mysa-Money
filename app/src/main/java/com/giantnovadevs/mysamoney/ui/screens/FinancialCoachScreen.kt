@@ -23,6 +23,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.viewmodel.ChatMessage
 import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
+import android.app.Activity
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +39,9 @@ fun FinancialCoachScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    val showAdDialog by viewModel.showAdDialog.collectAsState()
+    val messageCredits by viewModel.messageCredits.collectAsState()
+    val context = LocalContext.current // We need this to get the Activity
 
     // Automatically scroll to the bottom when a new message appears
     LaunchedEffect(chatHistory.size) {
@@ -73,7 +78,8 @@ fun FinancialCoachScreen(
                         userQuestion = "" // Clear the text field
                         focusManager.clearFocus() // Hide keyboard
                     }
-                }
+                },
+                credits = messageCredits
             )
         }
     ) { padding ->
@@ -98,6 +104,32 @@ fun FinancialCoachScreen(
                 }
             }
         }
+
+    }
+    if (showAdDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissAdDialog() },
+            title = { Text("You're out of free messages") },
+            text = { Text("Watch a short ad to get 3 more message credits, or upgrade to Pro for unlimited access.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        // Find the activity and show the ad
+                        val activity = context as? Activity
+                        if (activity != null) {
+                            viewModel.showRewardAd(activity)
+                        }
+                    }
+                ) {
+                    Text("Watch Ad")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissAdDialog() }) {
+                    Text("Maybe Later")
+                }
+            }
+        )
     }
 }
 
@@ -137,25 +169,33 @@ fun ChatInputBar(
     text: String,
     onTextChange: (String) -> Unit,
     isLoading: Boolean,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    credits: Int
 ) {
     Surface(
         tonalElevation = 4.dp // Add shadow to separate from content
     ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = onTextChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            placeholder = { Text("Ask a question...") },
-            trailingIcon = {
-                IconButton(onClick = onSend, enabled = !isLoading && text.isNotBlank()) {
-                    Icon(Icons.Default.Send, contentDescription = "Send")
-                }
-            },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { onSend() })
-        )
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            // Show remaining credits
+            Text(
+                text = "Free messages remaining: $credits",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+            )
+            OutlinedTextField(
+                value = text,
+                onValueChange = onTextChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Ask a question...") },
+                trailingIcon = {
+                    IconButton(onClick = onSend, enabled = !isLoading && text.isNotBlank()) {
+                        Icon(Icons.Default.Send, contentDescription = "Send")
+                    }
+                },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { onSend() })
+            )
+        }
     }
 }
