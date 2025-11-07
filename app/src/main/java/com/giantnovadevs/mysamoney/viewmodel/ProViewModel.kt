@@ -47,4 +47,14 @@ class ProViewModel(app: Application) : AndroidViewModel(app) {
     fun launchPurchase(activity: Activity) {
         billingManager.launchPurchaseFlow(activity)
     }
+
+    fun consumeTestPurchase(onConsumed: () -> Unit) {
+        billingManager.consumeTestPurchase {
+            // After consuming, we also clear our saved preference
+            viewModelScope.launch {
+                preferencesManager.saveProStatus(false)
+                onConsumed()
+            }
+        }
+    }
 }

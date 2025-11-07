@@ -24,6 +24,7 @@ import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.viewmodel.ChatMessage
 import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
 import android.app.Activity
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.platform.LocalContext
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 
