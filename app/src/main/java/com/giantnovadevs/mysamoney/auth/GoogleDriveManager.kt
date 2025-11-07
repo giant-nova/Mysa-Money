@@ -36,7 +36,7 @@ class GoogleDriveManager(
             GsonFactory(),
             credential
         )
-            .setApplicationName("SpendWise")
+            .setApplicationName("MysaMoney")
             .build()
     }
 

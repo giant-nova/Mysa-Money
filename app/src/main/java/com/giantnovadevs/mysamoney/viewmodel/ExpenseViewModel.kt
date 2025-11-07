@@ -154,7 +154,7 @@ class ExpenseViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 if (!dir.exists()) dir.mkdirs()
-                val file = File(dir, "SpendWise_${System.currentTimeMillis()}.csv")
+                val file = File(dir, "MysaMoney_${System.currentTimeMillis()}.csv")
                 FileWriter(file).use { writer ->
                     writer.append("Amount,CategoryId,Date,Note\n")
                     val df = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())

@@ -25,14 +25,17 @@ import com.giantnovadevs.mysamoney.viewmodel.ChatMessage
 import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
 import android.app.Activity
 import androidx.compose.ui.platform.LocalContext
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinancialCoachScreen(
     navController: NavController,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    proViewModel: ProViewModel,
 ) {
     val viewModel: FinancialCoachViewModel = viewModel()
+    val isPro by proViewModel.isProUser.collectAsState()
     val chatHistory by viewModel.chatHistory.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var userQuestion by remember { mutableStateOf("") }
@@ -48,6 +51,10 @@ fun FinancialCoachScreen(
         if (chatHistory.isNotEmpty()) {
             listState.animateScrollToItem(chatHistory.size - 1)
         }
+    }
+
+    LaunchedEffect(isPro) {
+        viewModel.setUserProStatus(isPro)
     }
 
     Scaffold(
@@ -106,7 +113,7 @@ fun FinancialCoachScreen(
         }
 
     }
-    if (showAdDialog) {
+    if (showAdDialog && !isPro) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissAdDialog() },
             title = { Text("You're out of free messages") },

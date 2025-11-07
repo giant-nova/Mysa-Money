@@ -12,6 +12,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.giantnovadevs.mysamoney.viewmodel.AuthViewModel
 import com.giantnovadevs.mysamoney.viewmodel.BackupViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.SettingsViewModel
 
 
@@ -20,6 +21,7 @@ fun AppNavGraph(
     navController: NavHostController,
     settingsViewModel: SettingsViewModel,
     authViewModel: AuthViewModel,
+    proViewModel: ProViewModel,
     onMenuClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -37,7 +39,7 @@ fun AppNavGraph(
             val categoryId = backStackEntry.arguments?.getString("categoryId")
             AddExpenseScreen(navController, categoryId)
         }
-        composable("list") { ExpenseListScreen(onMenuClick = onMenuClick) }
+        composable("list") { ExpenseListScreen(onMenuClick = onMenuClick, proViewModel) }
         composable("summary") { SummaryScreen(navController, onMenuClick = onMenuClick) }
         composable("categories") { CategoryScreen(navController, onMenuClick = onMenuClick) }
         composable("about") {
@@ -79,7 +81,7 @@ fun AppNavGraph(
         }
 
         composable("coach") {
-            FinancialCoachScreen(navController, onMenuClick = onMenuClick)
+            FinancialCoachScreen(navController, onMenuClick = onMenuClick, proViewModel)
         }
 
         composable("settings") {
@@ -88,7 +90,8 @@ fun AppNavGraph(
                 onMenuClick = onMenuClick,
                 viewModel = settingsViewModel,
                 authViewModel = authViewModel,
-                backupViewModel = backupViewModel
+                backupViewModel = backupViewModel,
+                proViewModel = proViewModel
             )
         }
 

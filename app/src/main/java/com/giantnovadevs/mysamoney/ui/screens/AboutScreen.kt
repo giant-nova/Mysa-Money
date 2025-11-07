@@ -30,7 +30,7 @@ fun AboutScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("About SpendWise") },
+                title = { Text("About Mysa Money") },
                 navigationIcon = {
                     IconButton(onClick = onMenuClick) {
                         Icon(Icons.Filled.Menu, contentDescription = "Open Menu")
@@ -62,7 +62,7 @@ fun AboutScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "SpendWise",
+                text = "Mysa Money",
                 style = MaterialTheme.typography.headlineLarge
             )
 
@@ -75,7 +75,7 @@ fun AboutScreen(
             Spacer(Modifier.height(32.dp))
 
             Text(
-                text = "Made with ❤️ by Kunal", // You can change this
+                text = "Made with ❤️ in India", // You can change this
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center
             )

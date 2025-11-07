@@ -35,17 +35,22 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import android.util.Log
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.LoadAdError
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpenseListScreen(onMenuClick: () -> Unit) { // <-- Added onMenuClick
+fun ExpenseListScreen(
+    onMenuClick: () -> Unit,
+    proViewModel: ProViewModel
+) {
     val expVm: ExpenseViewModel = viewModel()
     val expenses by expVm.expenses.collectAsState()
     val context = LocalContext.current
     val catVm: CategoryViewModel = viewModel()
     val categories by catVm.categories.collectAsState()
+    val isPro by proViewModel.isProUser.collectAsState()
 
     Scaffold(
         topBar = {
@@ -81,13 +86,17 @@ fun ExpenseListScreen(onMenuClick: () -> Unit) { // <-- Added onMenuClick
             )
         },
         bottomBar = {
-            BannerAd()
+            if(!isPro) {
+                BannerAd()
+            }
         }
     ) { padding ->
         // ✅ Use Crossfade to animate between empty and list states
         Crossfade(
             targetState = expenses.isEmpty(),
-            modifier = Modifier.padding(padding).fillMaxSize(),
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize(),
             label = "Empty/List"
         ) { isEmpty ->
             if (isEmpty) {

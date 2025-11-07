@@ -17,6 +17,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.giantnovadevs.mysamoney.viewmodel.AuthViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
             // ✅ Collect the current theme from the ViewModel
             val currentTheme by settingsViewModel.currentTheme.collectAsState()
             val currentFont by settingsViewModel.currentFont.collectAsState()
+            val proViewModel: ProViewModel by viewModels()
 
             MysaMoneyTheme(
                 palette = currentTheme,
@@ -43,9 +45,11 @@ class MainActivity : ComponentActivity() {
                 ModalNavigationDrawer(drawerState = drawerState, drawerContent = {
                     AppDrawer(navController) { scope.launch { drawerState.close() } }
                 }) {
-                    AppNavGraph(navController = navController,
+                    AppNavGraph(
+                        navController = navController,
                         settingsViewModel = settingsViewModel,
                         authViewModel = authViewModel,
+                        proViewModel = proViewModel,
                         onMenuClick = {
                             scope.launch {
                                 drawerState.open()

@@ -31,7 +31,7 @@ fun AppDrawer(navController: NavController, onClose: () -> Unit) {
     ModalDrawerSheet {
         Column(Modifier.padding(16.dp)) {
             Text(
-                "SpendWise",
+                "Mysa Money",
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(bottom = 16.dp)
             )

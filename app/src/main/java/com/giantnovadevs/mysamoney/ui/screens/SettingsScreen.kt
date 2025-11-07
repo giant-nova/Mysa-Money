@@ -30,6 +30,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import com.giantnovadevs.mysamoney.viewmodel.AuthViewModel
 import com.giantnovadevs.mysamoney.viewmodel.BackupRestoreState
 import com.giantnovadevs.mysamoney.viewmodel.BackupViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import kotlin.system.exitProcess
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -41,7 +42,8 @@ fun SettingsScreen(
     onMenuClick: () -> Unit,
     viewModel: SettingsViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel(),
-    backupViewModel: BackupViewModel = viewModel()
+    backupViewModel: BackupViewModel = viewModel(),
+    proViewModel: ProViewModel
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -59,6 +61,8 @@ fun SettingsScreen(
 
     // Local state to track the last operation for success/error messaging
     var lastOperation by remember { mutableStateOf<String?>(null) }
+    val isPro by proViewModel.isProUser.collectAsState() // ✅ Get Pro status
+    val proPrice by proViewModel.proProductPrice.collectAsState() // ✅ Get Pro price
 
     // --- 1. Flaw Fix: Tell the BackupViewModel who is signed in ---
     LaunchedEffect(account) {
@@ -283,6 +287,42 @@ fun SettingsScreen(
                         ),
                     ) {
                         Text("Restore Data from Google Drive")
+                    }
+
+                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+                    // --- ✅ NEW: Pro Upgrade Section ---
+                    Text(
+                        "Mysa Money Pro",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (isPro) {
+                        // User is Pro
+                        Text(
+                            "You are a Pro member! Thank you for your support.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        // User is not Pro
+                        Button(
+                            onClick = {
+                                val activity = context as? Activity
+                                if (activity != null) {
+                                    proViewModel.launchPurchase(activity)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Upgrade to Pro ($proPrice)")
+                        }
+                        Text(
+                            "Unlock unlimited AI messages, Google Drive backup, receipt scanning, and remove all ads!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

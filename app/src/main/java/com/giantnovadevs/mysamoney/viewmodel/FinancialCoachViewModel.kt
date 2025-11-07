@@ -85,6 +85,13 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     private val _messageCredits = MutableStateFlow(1) // Start with 1 free credit
     val messageCredits = _messageCredits.asStateFlow()
 
+    private var isUserPro = false // New variable
+
+    // New function to accept Pro status from UI
+    fun setUserProStatus(isPro: Boolean) {
+        isUserPro = isPro
+    }
+
     init {
         // Pre-load an ad when the ViewModel is created
         adManager.loadRewardedAd()
@@ -92,7 +99,7 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
 
     fun askQuestion(question: String) {
         // --- Check for credits ---
-        if (_messageCredits.value <= 0) {
+        if (!isUserPro && _messageCredits.value <= 0) {
             _showAdDialog.value = true // Show the "watch ad" dialog
             return
         }
@@ -162,7 +169,7 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         return """
-            You are "SpendWise Coach," a friendly and helpful financial assistant.
+            You are "Mysa Money Coach," a friendly and helpful financial assistant.
             Provide insights based *only* on the data below. Be concise.
 
             Data:

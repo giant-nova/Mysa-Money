@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import androidx.datastore.preferences.core.booleanPreferencesKey
 
 // Create the DataStore instance
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -20,6 +21,7 @@ class PreferencesManager(context: Context) {
     companion object {
         val THEME_KEY = stringPreferencesKey("theme_preference")
         val FONT_KEY = stringPreferencesKey("font_preference")
+        val PRO_KEY = booleanPreferencesKey("pro_status")
     }
 
     /**
@@ -48,6 +50,21 @@ class PreferencesManager(context: Context) {
             preferences[FONT_KEY] = fontName
         }
     }
+
+    suspend fun saveProStatus(isPro: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PRO_KEY] = isPro
+        }
+    }
+
+    /**
+     * A flow that emits the currently saved Pro status.
+     * Defaults to false.
+     */
+    val isProUser: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[PRO_KEY] ?: false
+        }
 
     /**
      * A flow that emits the currently saved font name.
