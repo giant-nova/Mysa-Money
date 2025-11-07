@@ -12,6 +12,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.giantnovadevs.mysamoney.viewmodel.AuthViewModel
 import com.giantnovadevs.mysamoney.viewmodel.BackupViewModel
+import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.SettingsViewModel
 
@@ -26,6 +27,7 @@ fun AppNavGraph(
     modifier: Modifier = Modifier
 ) {
     val backupViewModel: BackupViewModel = viewModel()
+    val financialCoachViewModel: FinancialCoachViewModel = viewModel()
     NavHost(navController = navController, startDestination = "home") {
         composable("home") { HomeScreen(navController, onMenuClick = onMenuClick) }
         composable(
@@ -81,7 +83,12 @@ fun AppNavGraph(
         }
 
         composable("coach") {
-            FinancialCoachScreen(navController, onMenuClick = onMenuClick, proViewModel)
+            FinancialCoachScreen(
+                navController = navController,
+                onMenuClick = onMenuClick,
+                proViewModel = proViewModel,
+                viewModel = financialCoachViewModel
+            )
         }
 
         composable("settings") {

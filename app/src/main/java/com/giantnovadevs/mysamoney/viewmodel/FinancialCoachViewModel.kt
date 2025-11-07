@@ -2,7 +2,7 @@ package com.giantnovadevs.mysamoney.viewmodel
 
 import android.app.Activity
 import android.app.Application
-import android.util.Log // ✅ Add Log import
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.giantnovadevs.mysamoney.BuildConfig
@@ -34,6 +34,9 @@ data class Candidate(val content: Content?, @SerializedName("finishReason") val 
 
 
 class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
+
+    // Add a Log Tag
+    private val TAG = "FinancialCoachVM"
 
     private val expenseDao = AppDatabase.getInstance(app).expenseDao()
     private val incomeDao = AppDatabase.getInstance(app).incomeDao()
@@ -87,6 +90,7 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
+            // This is the bug fix: only subtract if not Pro
             if (!isUserPro) {
                 _messageCredits.value = _messageCredits.value - 1
             }
@@ -103,8 +107,12 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
                 val json = gson.toJson(requestBody)
                 val body = json.toRequestBody("application/json".toMediaType())
 
+                // Use the correct, working model URL
                 val url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${BuildConfig.GEMINI_API_KEY}"
 
+                Log.d(TAG, "--- askQuestion ---")
+                Log.d(TAG, "Request URL: $url")
+                Log.d(TAG, "Request JSON: $json")
 
                 val request = Request.Builder()
                     .url(url)
@@ -112,14 +120,14 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
                     .build()
 
                 val response = client.newCall(request).execute()
+                val responseBody = response.body?.string() // Read body once
 
                 if (!response.isSuccessful) {
-                    val errorBody = response.body?.string()
-                    // ✅ Added logging for the error body
-                    throw Exception("HTTP ${response.code}: ${response.message} \n $errorBody")
+                    Log.e(TAG, "Response Error: $responseBody")
+                    throw Exception("HTTP ${response.code}: ${response.message} \n $responseBody")
                 }
 
-                val responseBody = response.body?.string()
+                Log.d(TAG, "Response Success: $responseBody")
                 val geminiResponse = gson.fromJson(responseBody, GeminiResponse::class.java)
                 val aiText = geminiResponse.candidates?.firstOrNull()
                     ?.content?.parts?.firstOrNull()?.text
@@ -127,19 +135,24 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
 
                 _uiState.value = _uiState.value + ChatMessage(aiText, isFromUser = false)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value + ChatMessage("Error: ${e.message}", isFromUser = false)
+                Log.e(TAG, "askQuestion failed", e)
+                // --- ✅ FIX 1: Show a friendly error message ---
+                _uiState.value = _uiState.value + ChatMessage("uh oh...Its not you, its us. Please try again later.", isFromUser = false)
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    // --- ✅ NEW FUNCTION TO LIST MODELS ---
+    // ... (listAvailableModels is unchanged) ...
     fun listAvailableModels() {
-        _uiState.value = _uiState.value + ChatMessage("Checking available models...", false)
+        _uiState.value = _uiState.value + ChatMessage("Checking available models... see Logcat.", false)
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val url = "https://generativelanguage.googleapis.com/v1/models?key=${BuildConfig.GEMINI_API_KEY}"
+
+                Log.d(TAG, "--- listAvailableModels ---")
+                Log.d(TAG, "Request URL: $url")
 
                 val request = Request.Builder()
                     .url(url)
@@ -150,18 +163,24 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
                 val responseBody = response.body?.string()
 
                 if (!response.isSuccessful) {
+                    Log.e(TAG, "listModels Error: $responseBody")
                     // Show the error in the chat
                     _uiState.value = _uiState.value + ChatMessage("Error listing models: ${response.message}\n${responseBody}", false)
                 } else {
-                    _uiState.value = _uiState.value + ChatMessage("Available Models:\n$responseBody", false)
+                    Log.i(TAG, "--- AVAILABLE MODELS ---")
+                    Log.i(TAG, responseBody ?: "Empty response")
+                    Log.i(TAG, "--- END OF MODELS ---")
+                    _uiState.value = _uiState.value + ChatMessage("Model list logged to Logcat.", false)
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "listModels failed", e)
                 _uiState.value = _uiState.value + ChatMessage("Error: ${e.message}", false)
             }
         }
     }
 
     private suspend fun buildContextPrompt(question: String): String {
+        // ... (This function is unchanged)
         val oneMonthAgo = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)
         val expenses = expenseDao.getExpensesAfter(oneMonthAgo)
         val incomes = incomeDao.getAllIncomesAfter(oneMonthAgo)
