@@ -1,11 +1,12 @@
-// FinancialCoachViewModel.kt
 package com.giantnovadevs.mysamoney.viewmodel
 
 import android.app.Activity
 import android.app.Application
+import android.util.Log // ✅ Add Log import
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.giantnovadevs.mysamoney.BuildConfig
+import com.giantnovadevs.mysamoney.ads.AdManager
 import com.giantnovadevs.mysamoney.data.AppDatabase
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
@@ -20,33 +21,17 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
-import com.giantnovadevs.mysamoney.ads.AdManager
 
 data class ChatMessage(
     val message: String,
     val isFromUser: Boolean
 )
-
-// Gemini REST API models
-data class GeminiRequest(
-    val contents: List<Content>
-)
-
-data class Content(
-    val parts: List<Part>,
-    val role: String = "user"
-)
-
+data class GeminiRequest(val contents: List<Content>)
+data class Content(val parts: List<Part>, val role: String = "user")
 data class Part(val text: String)
+data class GeminiResponse(val candidates: List<Candidate>?)
+data class Candidate(val content: Content?, @SerializedName("finishReason") val finishReason: String?)
 
-data class GeminiResponse(
-    val candidates: List<Candidate>?
-)
-
-data class Candidate(
-    val content: Content?,
-    @SerializedName("finishReason") val finishReason: String?
-)
 
 class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -77,37 +62,34 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
 
     private val adManager = AdManager(app)
 
-    // This state tells the UI to show the "watch ad" dialog
     private val _showAdDialog = MutableStateFlow(false)
     val showAdDialog = _showAdDialog.asStateFlow()
 
-    // This tracks how many free messages the user has
-    private val _messageCredits = MutableStateFlow(1) // Start with 1 free credit
+    private val _messageCredits = MutableStateFlow(1)
     val messageCredits = _messageCredits.asStateFlow()
 
-    private var isUserPro = false // New variable
+    private var isUserPro = false
 
-    // New function to accept Pro status from UI
     fun setUserProStatus(isPro: Boolean) {
         isUserPro = isPro
     }
 
     init {
-        // Pre-load an ad when the ViewModel is created
         adManager.loadRewardedAd()
     }
 
+
     fun askQuestion(question: String) {
-        // --- Check for credits ---
         if (!isUserPro && _messageCredits.value <= 0) {
-            _showAdDialog.value = true // Show the "watch ad" dialog
+            _showAdDialog.value = true
             return
         }
 
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
-            // Consume a credit
-            _messageCredits.value = _messageCredits.value - 1
+            if (!isUserPro) {
+                _messageCredits.value = _messageCredits.value - 1
+            }
             _uiState.value = _uiState.value + ChatMessage(question, isFromUser = true)
 
             try {
@@ -121,17 +103,24 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
                 val json = gson.toJson(requestBody)
                 val body = json.toRequestBody("application/json".toMediaType())
 
+                val url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${BuildConfig.GEMINI_API_KEY}"
+
+
                 val request = Request.Builder()
-                    .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${BuildConfig.GEMINI_API_KEY}")
+                    .url(url)
                     .post(body)
                     .build()
 
                 val response = client.newCall(request).execute()
+
                 if (!response.isSuccessful) {
-                    throw Exception("HTTP ${response.code}")
+                    val errorBody = response.body?.string()
+                    // ✅ Added logging for the error body
+                    throw Exception("HTTP ${response.code}: ${response.message} \n $errorBody")
                 }
 
-                val geminiResponse = gson.fromJson(response.body?.string(), GeminiResponse::class.java)
+                val responseBody = response.body?.string()
+                val geminiResponse = gson.fromJson(responseBody, GeminiResponse::class.java)
                 val aiText = geminiResponse.candidates?.firstOrNull()
                     ?.content?.parts?.firstOrNull()?.text
                     ?: "No response from AI."
@@ -141,6 +130,33 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
                 _uiState.value = _uiState.value + ChatMessage("Error: ${e.message}", isFromUser = false)
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    // --- ✅ NEW FUNCTION TO LIST MODELS ---
+    fun listAvailableModels() {
+        _uiState.value = _uiState.value + ChatMessage("Checking available models...", false)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val url = "https://generativelanguage.googleapis.com/v1/models?key=${BuildConfig.GEMINI_API_KEY}"
+
+                val request = Request.Builder()
+                    .url(url)
+                    .get()
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+
+                if (!response.isSuccessful) {
+                    // Show the error in the chat
+                    _uiState.value = _uiState.value + ChatMessage("Error listing models: ${response.message}\n${responseBody}", false)
+                } else {
+                    _uiState.value = _uiState.value + ChatMessage("Available Models:\n$responseBody", false)
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value + ChatMessage("Error: ${e.message}", false)
             }
         }
     }
@@ -163,8 +179,7 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
             if (expenses.isEmpty()) appendLine("No expenses recorded.")
             else expenses.forEach { expense ->
                 val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "Unknown"
-                appendLine("- ₹${expense.amount} on '$categoryName' (${expense.note ?: "no note"}) on ${formatDate(expense.date)}")
-            }
+                appendLine("- ₹${expense.amount} on '$categoryName' (${expense.note ?: "no note"}) on ${formatDate(expense.date)}")            }
             appendLine("--- End of Financial Data ---")
         }
 
@@ -180,22 +195,17 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun showRewardAd(activity: Activity) {
-        _showAdDialog.value = false // Close the dialog
+        _showAdDialog.value = false
         adManager.showRewardedAd(activity) {
-            // This is the onRewardEarned callback!
-            // Give the user 3 new credits.
             _messageCredits.value = _messageCredits.value + 3
-            // Pre-load the next ad
             adManager.loadRewardedAd()
         }
     }
 
-    /**
-     * Called when the user closes the "watch ad" dialog.
-     */
     fun dismissAdDialog() {
         _showAdDialog.value = false
     }
+
     private fun formatDate(timestamp: Long): String {
         val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
         return sdf.format(Date(timestamp))

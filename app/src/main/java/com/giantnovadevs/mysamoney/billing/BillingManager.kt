@@ -6,6 +6,7 @@ import android.util.Log
 import com.android.billingclient.api.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.android.billingclient.api.ConsumeParams
 
 // The product ID you just created in the Play Console
 private const val PRO_PRODUCT_ID = "mysamoney_pro"
@@ -146,6 +147,37 @@ class BillingManager(private val context: Context) {
                     Log.i(TAG, "Purchase acknowledged.")
                 } else {
                     Log.e(TAG, "Failed to acknowledge purchase: ${billingResult.debugMessage}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Finds and consumes the Pro purchase.
+     * This is FOR TESTING ONLY, to allow re-buying.
+     */
+    fun consumeTestPurchase(onConsumed: () -> Unit) {
+        billingClient.queryPurchasesAsync(
+            QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
+        ) { billingResult, purchases ->
+            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                for (purchase in purchases) {
+                    if (purchase.products.contains(PRO_PRODUCT_ID)) {
+                        // Found the purchase, now consume it
+                        val consumeParams = ConsumeParams.newBuilder()
+                            .setPurchaseToken(purchase.purchaseToken)
+                            .build()
+                        billingClient.consumeAsync(consumeParams) { consumeResult, purchaseToken ->
+                            if (consumeResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                                Log.i(TAG, "Test purchase consumed successfully. Token: $purchaseToken")
+                                _isProUser.value = false // Force UI update
+                                onConsumed()
+                            } else {
+                                Log.e(TAG, "Failed to consume test purchase: ${consumeResult.debugMessage}")
+                            }
+                        }
+                        return@queryPurchasesAsync
+                    }
                 }
             }
         }

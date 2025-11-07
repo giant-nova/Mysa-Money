@@ -305,6 +305,25 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
+
+                        Button(
+                            onClick = {
+                                proViewModel.consumeTestPurchase {
+                                    // This will force a restart to clear the state
+                                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                                    intent!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                    context.startActivity(intent)
+                                    exitProcess(0)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("DEBUG: Consume Pro Purchase (to re-test)")
+                        }
+
                     } else {
                         // User is not Pro
                         Button(
@@ -318,11 +337,6 @@ fun SettingsScreen(
                         ) {
                             Text("Upgrade to Pro ($proPrice)")
                         }
-                        Text(
-                            "Unlock unlimited AI messages, Google Drive backup, receipt scanning, and remove all ads!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
