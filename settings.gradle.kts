@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SpendWise"
+rootProject.name = "Mysa Money"
 include(":app")
  
