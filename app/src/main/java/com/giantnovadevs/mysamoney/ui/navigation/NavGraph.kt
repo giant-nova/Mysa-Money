@@ -102,5 +102,9 @@ fun AppNavGraph(
             )
         }
 
+        composable("upgrade") {
+            UpgradeScreen(navController, proViewModel)
+        }
+
     }
 }
