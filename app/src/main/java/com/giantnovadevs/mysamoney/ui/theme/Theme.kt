@@ -19,7 +19,7 @@ fun MysaMoneyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // --- Our New Dynamic Parameters ---
     // 1. Allow Dynamic Color (Android 12+) to be turned on/off
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     // 2. The selected color palette (defaults to our Blue)
     palette: AppColorPalette = RosePalette,
     // 3. The selected font family

@@ -43,7 +43,11 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
 
                 ModalNavigationDrawer(drawerState = drawerState, drawerContent = {
-                    AppDrawer(navController) { scope.launch { drawerState.close() } }
+                    AppDrawer(
+                        navController = navController,
+                        proViewModel = proViewModel,
+                        onClose = { scope.launch { drawerState.close() } }
+                    )
                 }) {
                     AppNavGraph(
                         navController = navController,

@@ -21,13 +21,16 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.runtime.collectAsState
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 
 @Composable
-fun AppDrawer(navController: NavController, onClose: () -> Unit) {
+fun AppDrawer(navController: NavController, onClose: () -> Unit, proViewModel: ProViewModel,) {
     // ✅ Get the current route to show the selected item
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-
+    val isPro by proViewModel.isProUser.collectAsState()
     ModalDrawerSheet {
         Column(Modifier.padding(16.dp)) {
             Text(
@@ -37,6 +40,18 @@ fun AppDrawer(navController: NavController, onClose: () -> Unit) {
             )
             Divider()
             Spacer(Modifier.height(16.dp))
+            if (!isPro) {
+                Button(
+                    onClick = { navController.navigate("upgrade"); onClose() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                ) {
+                    Icon(Icons.Filled.Star, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Text("Upgrade to Pro")
+                }
+                Divider()
+            }
 
             // ✅ Pass the current route to the DrawerItem
             DrawerItem(
