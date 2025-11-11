@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.giantnovadevs.mysamoney.billing.BillingManager
 import com.giantnovadevs.mysamoney.data.PreferencesManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -55,6 +56,16 @@ class ProViewModel(app: Application) : AndroidViewModel(app) {
                 preferencesManager.saveProStatus(false)
                 onConsumed()
             }
+        }
+    }
+
+    val freeScansRemaining = preferencesManager.freeScansRemaining
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
+
+    // A function to call when a scan is used
+    fun useFreeScan() {
+        viewModelScope.launch(Dispatchers.IO) { // Run on IO thread
+            preferencesManager.decrementFreeScans()
         }
     }
 }

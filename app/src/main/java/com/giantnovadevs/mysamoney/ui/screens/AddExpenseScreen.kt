@@ -1,68 +1,76 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
-
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur // ✅ Add blur import
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.Category
 import com.giantnovadevs.mysamoney.data.Expense
+import com.giantnovadevs.mysamoney.ml.TextRecognitionHelper
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ExpenseViewModel
-import androidx.compose.material3.TopAppBarDefaults
-import java.util.*
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
-import android.Manifest
-import android.content.pm.PackageManager
-import android.net.Uri
-import com.giantnovadevs.mysamoney.ml.TextRecognitionHelper
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import kotlinx.coroutines.launch
-
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddExpenseScreen(navController: NavController, categoryId: String?) {
-    val expVm: ExpenseViewModel = viewModel()
-    val catVm: CategoryViewModel = viewModel()
-    val categories by catVm.categories.collectAsState()
+fun AddExpenseScreen(
+    navController: NavController,
+    categoryId: String?,
+    proViewModel: ProViewModel
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val textRecognizer = remember { TextRecognitionHelper(context) }
+
+    val expVm: ExpenseViewModel = viewModel()
+    val catVm: CategoryViewModel = viewModel()
+    val categories by catVm.categories.collectAsState()
 
     var amount by remember { mutableStateOf("") }
     var selectedCat by remember { mutableStateOf<Category?>(null) }
     var note by remember { mutableStateOf("") }
     var categoriesExpanded by remember { mutableStateOf(false) }
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
-    // This state is derived from other states. It makes the UI more "intuitive"
-    // by enabling/disabling the save button.
+    // --- Get Pro Status & Scan Count ---
+    val isPro by proViewModel.isProUser.collectAsState()
+    val freeScans by proViewModel.freeScansRemaining.collectAsState()
+
     val isFormValid by remember(amount, selectedCat) {
         mutableStateOf(
             (amount.toDoubleOrNull() ?: 0.0) > 0 && selectedCat != null
         )
     }
 
-    // --- 1. State for permission ---
+    // --- Permission State ---
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -71,7 +79,6 @@ fun AddExpenseScreen(navController: NavController, categoryId: String?) {
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
-    // --- 2. Permission launcher ---
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -81,40 +88,46 @@ fun AddExpenseScreen(navController: NavController, categoryId: String?) {
         }
     }
 
-    // --- 3. Listen for the camera result ---
-    val imageUriResult = navController.currentBackStackEntry
-        ?.savedStateHandle
-        ?.getLiveData<Uri>("image_uri")
+    // --- ✅ BUG FIX: "Decrement by 2" ---
+    // We now collect the URI as state. This is cleaner and avoids re-observing.
+    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
 
-    LaunchedEffect(imageUriResult) {
-        imageUriResult?.observeForever { uri ->
-            if (uri != null) {
-                // We got a photo! Analyze it.
-                scope.launch {
-                    val parsedAmount = textRecognizer.analyze(uri)
-                    if (parsedAmount != null) {
-                        amount = parsedAmount // Set the amount!
-                    }
-                    // Clear the result so we don't process it again
-                    navController.currentBackStackEntry?.savedStateHandle?.set("image_uri", null)
+    // Get the flow (it will be null if savedStateHandle is null)
+    val imageUriFlow = savedStateHandle?.getStateFlow<Uri?>("image_uri", null)
+
+    // Collect the state. If the flow is null, create a remembered state that is just null.
+    val imageUri by imageUriFlow?.collectAsState() ?: remember { mutableStateOf<Uri?>(null) }
+
+    // This LaunchedEffect will ONLY run when imageUri changes from null to a non-null value
+    LaunchedEffect(imageUri) {
+        val uri = imageUri
+        if (uri != null) {
+            // We got a photo!
+            if (!isPro) {
+                proViewModel.useFreeScan() // This will now run only ONCE
+            }
+            // Analyze the image
+            scope.launch {
+                val parsedAmount = textRecognizer.analyze(uri)
+                if (parsedAmount != null) {
+                    amount = parsedAmount
                 }
+                // Clear the value from the handle to "re-arm" the trigger
+                savedStateHandle?.set("image_uri", null)
             }
         }
     }
+    // --- END OF BUG FIX ---
 
-    // ✅ Whenever categories change, set first as default if none selected
+    // (Category selection LaunchedEffect is unchanged)
     LaunchedEffect(categories, categoryId) {
         if (categories.isNotEmpty()) {
-            // Check if a valid categoryId was passed
             val preSelected = categoryId?.toIntOrNull()?.let { id ->
                 categories.find { it.id == id }
             }
-
             if (preSelected != null) {
-                // If we found the pre-selected category, set it
                 selectedCat = preSelected
             } else if (selectedCat == null) {
-                // Otherwise, just set the first category as default
                 selectedCat = categories.first()
             }
         }
@@ -124,44 +137,39 @@ fun AddExpenseScreen(navController: NavController, categoryId: String?) {
         topBar = {
             TopAppBar(
                 title = { Text("Add Expense") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Go Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { padding ->
-        // This Box provides the animation and the bottom-aligned button
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
         ) {
-
-            // Column for all the form fields
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
             ) {
-
-                // ✅ Animation: All content fades in and slides up
                 AnimatedVisibility(
-                    visible = true, // We can set this to a state if we want to delay it
+                    visible = true,
                     enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn()
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp) // Principle 1
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
 
-                        // --- 1. Amount Field (The Hero) ---
+                        // --- 1. Amount Field (Modified) ---
                         OutlinedTextField(
                             value = amount,
                             onValueChange = {
@@ -178,21 +186,63 @@ fun AddExpenseScreen(navController: NavController, categoryId: String?) {
                                 imeAction = ImeAction.Next
                             ),
                             modifier = Modifier.fillMaxWidth(),
-                            // --- 4. Add the Scan Button ---
+
+                            // --- ✅ NEW UI: Locked Icon & Tooltip ---
                             trailingIcon = {
-                                IconButton(onClick = {
-                                    if (hasCameraPermission) {
-                                        navController.navigate("camera_screen")
-                                    } else {
-                                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                                val isLocked = !isPro && freeScans == 0
+
+                                if (isLocked) {
+                                    // User is Free and OUT of scans
+                                    val tooltipState = rememberTooltipState()
+                                    TooltipBox(
+                                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                                        tooltip = {
+                                            PlainTooltip {
+                                                Text("Out of scans? Upgrade to Pro for unlimited scans.")
+                                            }
+                                        },
+                                        state = tooltipState
+                                    ) {
+                                        // Show a blurred lock icon
+                                        Icon(
+                                            Icons.Filled.Lock,
+                                            contentDescription = "Scan locked, upgrade to Pro",
+                                            modifier = Modifier.blur(4.dp), // Apply blur
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
-                                }) {
-                                    Icon(Icons.Filled.CameraAlt, "Scan Receipt")
+                                } else {
+                                    // User is Pro OR has free scans left
+                                    IconButton(onClick = {
+                                        if (hasCameraPermission) {
+                                            navController.navigate("camera_screen")
+                                        } else {
+                                            permissionLauncher.launch(Manifest.permission.CAMERA)
+                                        }
+                                    }) {
+                                        Icon(Icons.Filled.CameraAlt, "Scan Receipt")
+                                    }
                                 }
                             }
+                            // --- END OF NEW UI ---
                         )
 
-                        // --- 2. Category Field (M3 Dropdown) ---
+                        // Show remaining scans text
+                        if (!isPro) {
+                            val scanText = if (freeScans > 0) {
+                                "You have $freeScans free scans remaining."
+                            } else {
+                                "Upgrade to Pro for unlimited scans."
+                            }
+                            Text(
+                                text = scanText,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (freeScans > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 16.dp, top = 0.dp)
+                            )
+                        }
+
+                        // ... (Category Field is unchanged)
                         ExposedDropdownMenuBox(
                             expanded = categoriesExpanded,
                             onExpandedChange = { categoriesExpanded = !categoriesExpanded },
@@ -203,23 +253,10 @@ fun AddExpenseScreen(navController: NavController, categoryId: String?) {
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text("Category") },
-                                // Principle 5
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Filled.Category,
-                                        contentDescription = "Category"
-                                    )
-                                },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(
-                                        expanded = categoriesExpanded
-                                    )
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor() // This is important
+                                leadingIcon = { Icon(Icons.Filled.Category, "Category") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoriesExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
                             )
-
                             ExposedDropdownMenu(
                                 expanded = categoriesExpanded,
                                 onDismissRequest = { categoriesExpanded = false }
@@ -236,21 +273,37 @@ fun AddExpenseScreen(navController: NavController, categoryId: String?) {
                             }
                         }
 
-                        // --- 3. Note Field ---
+                        // ... (Date Picker is unchanged, uses the autofill-proof Box)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showDatePicker = true }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedDate.format(DateTimeFormatter.ofPattern("dd MMM, yyyy")),
+                                onValueChange = {},
+                                label = { Text("Date") },
+                                leadingIcon = { Icon(Icons.Filled.DateRange, "Date") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = false,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                    disabledContainerColor = Color.Transparent,
+                                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
+
+                        // ... (Note Field is unchanged)
                         OutlinedTextField(
                             value = note,
                             onValueChange = { note = it },
                             label = { Text("Note (optional)") },
-                            // Principle 5
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Filled.Notes,
-                                    contentDescription = "Note"
-                                )
-                            },
+                            leadingIcon = { Icon(Icons.Filled.Notes, "Note") },
                             keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text, // Use .Text for general notes
-                                capitalization = KeyboardCapitalization.Sentences, // This is the setting you want
+                                keyboardType = KeyboardType.Text,
                                 imeAction = ImeAction.Done
                             ),
                             modifier = Modifier.fillMaxWidth()
@@ -259,34 +312,58 @@ fun AddExpenseScreen(navController: NavController, categoryId: String?) {
                 }
             }
 
-            // --- 4. Save Button (Bottom Aligned) ---
+            // --- Save Button (Bottom Aligned) ---
             Button(
                 onClick = {
-                    // We know from isFormValid that amount is valid and selectedCat is not null
                     val amt = amount.toDoubleOrNull()!!
-
                     expVm.addExpense(
                         Expense(
                             amount = amt,
                             categoryId = selectedCat!!.id,
-                            note = note.ifBlank { null },
-                            date = Date().time
+                            note = if (note.isBlank()) null else note,
+                            date = selectedDate.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
                         )
                     )
                     navController.popBackStack()
                 },
-                // ✅ Intuitive UI: Button is disabled until form is valid
                 enabled = isFormValid,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
-                    .align(Alignment.BottomCenter) // Principle 4: Grouping/Layout
+                    .align(Alignment.BottomCenter)
             ) {
                 Text(
                     text = "Save",
-                    style = MaterialTheme.typography.titleMedium // Principle 2
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
+        }
+    }
+
+    // --- Date Picker Dialog (Unchanged) ---
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            selectedDate = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate()
+                        }
+                        showDatePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }

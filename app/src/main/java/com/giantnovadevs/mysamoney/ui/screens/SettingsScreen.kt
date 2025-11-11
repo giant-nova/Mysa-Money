@@ -265,8 +265,13 @@ fun SettingsScreen(
                     // Backup button
                     Button(
                         onClick = {
-                            lastOperation = "backup"
-                            backupViewModel.backupDatabase()
+                            if (isPro) {
+                                lastOperation = "backup"
+                                backupViewModel.backupDatabase()
+                            } else {
+                                // Not Pro, send to Upgrade screen
+                                navController.navigate("upgrade")
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = backupState == BackupRestoreState.IDLE,
@@ -277,8 +282,13 @@ fun SettingsScreen(
                     // Restore button
                     Button(
                         onClick = {
-                            lastOperation = "restore"
-                            backupViewModel.restoreDatabase()
+                            if (isPro) {
+                                lastOperation = "restore"
+                                backupViewModel.restoreDatabase()
+                            } else {
+                                // Not Pro, send to Upgrade screen
+                                navController.navigate("upgrade")
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = backupState == BackupRestoreState.IDLE,
