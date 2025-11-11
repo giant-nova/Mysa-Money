@@ -39,7 +39,7 @@ fun AppNavGraph(
         ) { backStackEntry ->
             // Get the categoryId from the navigation arguments
             val categoryId = backStackEntry.arguments?.getString("categoryId")
-            AddExpenseScreen(navController, categoryId)
+            AddExpenseScreen(navController, categoryId, proViewModel)
         }
         composable("list") { ExpenseListScreen(onMenuClick = onMenuClick, proViewModel) }
         composable("summary") { SummaryScreen(navController, onMenuClick = onMenuClick) }
