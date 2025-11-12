@@ -42,8 +42,9 @@ class IncomeViewModel(app: Application) : AndroidViewModel(app) {
     fun addIncome(amount: Double, note: String, date: LocalDate) {
         viewModelScope.launch {
             // Convert LocalDate to a timestamp
-            val timestamp = date.atStartOfDay()
-                .toEpochSecond(java.time.ZoneOffset.UTC) * 1000
+            val timestamp = date.atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
 
             val income = Income(
                 amount = amount,

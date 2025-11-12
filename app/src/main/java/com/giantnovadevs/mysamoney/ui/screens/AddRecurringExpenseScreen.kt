@@ -20,6 +20,7 @@ import com.giantnovadevs.mysamoney.data.Frequency
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.RecurringExpenseViewModel
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -238,8 +239,9 @@ fun AddRecurringExpenseScreen(navController: NavController) {
     // --- Date Picker Dialog ---
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.atStartOfDay()
-                .toEpochSecond(java.time.ZoneOffset.UTC) * 1000
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },

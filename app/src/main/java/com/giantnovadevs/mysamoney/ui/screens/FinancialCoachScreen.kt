@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
@@ -22,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -68,7 +66,6 @@ fun FinancialCoachScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Financial Coach")
-                        // --- ✅ FIX 2: Add "Pro" Badge ---
                         if (isPro) {
                             Badge(
                                 modifier = Modifier.padding(start = 8.dp),
@@ -85,15 +82,7 @@ fun FinancialCoachScreen(
                         Icon(Icons.Filled.Menu, contentDescription = "Open Menu")
                     }
                 },
-                actions = {
-                    IconButton(onClick = { viewModel.listAvailableModels() }) {
-                        Icon(
-                            Icons.Filled.Info,
-                            contentDescription = "List Models",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                },
+                // --- ✅ ITEM #6 FIX: Removed the 'actions' block ---
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -102,13 +91,11 @@ fun FinancialCoachScreen(
             )
         },
         bottomBar = {
-            // --- ✅ FIX 3: New Bottom Bar layout ---
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface)
             ) {
-                // Show "thinking..." text when loading
                 AnimatedVisibility(visible = isLoading) {
                     Text(
                         text = "Mysa Money Coach is thinking...",
@@ -120,7 +107,6 @@ fun FinancialCoachScreen(
                     )
                 }
 
-                // The Chat Input Box
                 ChatInputBar(
                     text = userQuestion,
                     onTextChange = { userQuestion = it },
@@ -133,7 +119,7 @@ fun FinancialCoachScreen(
                         }
                     },
                     credits = messageCredits,
-                    isPro = isPro // Pass isPro state
+                    isPro = isPro
                 )
             }
         }
@@ -150,12 +136,9 @@ fun FinancialCoachScreen(
             items(chatHistory) { message ->
                 MessageBubble(message = message)
             }
-
-            // --- ✅ FIX 3: Removed the loading spinner item from here ---
         }
     }
 
-    // "Watch Ad" Dialog
     if (showAdDialog && !isPro) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissAdDialog() },
@@ -189,7 +172,7 @@ fun FinancialCoachScreen(
 fun MessageBubble(message: ChatMessage) {
     val horizontalAlignment = if (message.isFromUser) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (message.isFromUser) {
-        MaterialTheme.colorScheme.primaryContainer
+        MaterialTheme.colorScheme.tertiaryContainer
     } else {
         MaterialTheme.colorScheme.secondaryContainer
     }
@@ -200,8 +183,8 @@ fun MessageBubble(message: ChatMessage) {
     ) {
         Text(
             text = message.message,
+            // --- ✅ ITEM #5 FIX: Removed 'fillMaxWidth(0.85f)' ---
             modifier = Modifier
-                .fillMaxWidth(0.85f)
                 .clip(RoundedCornerShape(16.dp))
                 .background(bubbleColor)
                 .padding(12.dp),
@@ -211,7 +194,7 @@ fun MessageBubble(message: ChatMessage) {
 }
 
 /**
- * The text field and send button (MODIFIED)
+ * The text field and send button at the bottom
  */
 @Composable
 fun ChatInputBar(
@@ -220,14 +203,14 @@ fun ChatInputBar(
     isLoading: Boolean,
     onSend: () -> Unit,
     credits: Int,
-    isPro: Boolean // ✅ Added isPro parameter
+    isPro: Boolean
 ) {
     Surface(
-        tonalElevation = 4.dp
+        tonalElevation = 4.dp // Adds a slight shadow
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
 
-            // --- ✅ FIX 4: Hide credit text if user is Pro ---
+            // Hide credit text if user is Pro
             if (!isPro) {
                 Text(
                     text = "Free messages remaining: $credits",

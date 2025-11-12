@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,10 +18,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur // ✅ Add blur import
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -60,7 +63,9 @@ fun AddExpenseScreen(
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    // --- Get Pro Status & Scan Count ---
+    // --- ✅ NEW STATE for "Add Category" Dialog ---
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
+
     val isPro by proViewModel.isProUser.collectAsState()
     val freeScans by proViewModel.freeScansRemaining.collectAsState()
 
@@ -88,38 +93,28 @@ fun AddExpenseScreen(
         }
     }
 
-    // --- ✅ BUG FIX: "Decrement by 2" ---
-    // We now collect the URI as state. This is cleaner and avoids re-observing.
+    // --- Camera Result Listener ---
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-
-    // Get the flow (it will be null if savedStateHandle is null)
     val imageUriFlow = savedStateHandle?.getStateFlow<Uri?>("image_uri", null)
-
-    // Collect the state. If the flow is null, create a remembered state that is just null.
     val imageUri by imageUriFlow?.collectAsState() ?: remember { mutableStateOf<Uri?>(null) }
 
-    // This LaunchedEffect will ONLY run when imageUri changes from null to a non-null value
     LaunchedEffect(imageUri) {
         val uri = imageUri
         if (uri != null) {
-            // We got a photo!
             if (!isPro) {
-                proViewModel.useFreeScan() // This will now run only ONCE
+                proViewModel.useFreeScan()
             }
-            // Analyze the image
             scope.launch {
                 val parsedAmount = textRecognizer.analyze(uri)
                 if (parsedAmount != null) {
                     amount = parsedAmount
                 }
-                // Clear the value from the handle to "re-arm" the trigger
                 savedStateHandle?.set("image_uri", null)
             }
         }
     }
-    // --- END OF BUG FIX ---
 
-    // (Category selection LaunchedEffect is unchanged)
+    // --- Category Selection Logic ---
     LaunchedEffect(categories, categoryId) {
         if (categories.isNotEmpty()) {
             val preSelected = categoryId?.toIntOrNull()?.let { id ->
@@ -133,6 +128,7 @@ fun AddExpenseScreen(
         }
     }
 
+    // --- Scaffold ---
     Scaffold(
         topBar = {
             TopAppBar(
@@ -169,7 +165,7 @@ fun AddExpenseScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
 
-                        // --- 1. Amount Field (Modified) ---
+                        // --- 1. Amount Field ---
                         OutlinedTextField(
                             value = amount,
                             onValueChange = {
@@ -186,13 +182,9 @@ fun AddExpenseScreen(
                                 imeAction = ImeAction.Next
                             ),
                             modifier = Modifier.fillMaxWidth(),
-
-                            // --- ✅ NEW UI: Locked Icon & Tooltip ---
                             trailingIcon = {
                                 val isLocked = !isPro && freeScans == 0
-
                                 if (isLocked) {
-                                    // User is Free and OUT of scans
                                     val tooltipState = rememberTooltipState()
                                     TooltipBox(
                                         positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
@@ -203,16 +195,14 @@ fun AddExpenseScreen(
                                         },
                                         state = tooltipState
                                     ) {
-                                        // Show a blurred lock icon
                                         Icon(
                                             Icons.Filled.Lock,
                                             contentDescription = "Scan locked, upgrade to Pro",
-                                            modifier = Modifier.blur(4.dp), // Apply blur
+                                            modifier = Modifier.blur(4.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 } else {
-                                    // User is Pro OR has free scans left
                                     IconButton(onClick = {
                                         if (hasCameraPermission) {
                                             navController.navigate("camera_screen")
@@ -224,25 +214,9 @@ fun AddExpenseScreen(
                                     }
                                 }
                             }
-                            // --- END OF NEW UI ---
                         )
 
-                        // Show remaining scans text
-                        if (!isPro) {
-                            val scanText = if (freeScans > 0) {
-                                "You have $freeScans free scans remaining."
-                            } else {
-                                "Upgrade to Pro for unlimited scans."
-                            }
-                            Text(
-                                text = scanText,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (freeScans > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 16.dp, top = 0.dp)
-                            )
-                        }
-
-                        // ... (Category Field is unchanged)
+                        // --- 2. Category Dropdown ---
                         ExposedDropdownMenuBox(
                             expanded = categoriesExpanded,
                             onExpandedChange = { categoriesExpanded = !categoriesExpanded },
@@ -255,7 +229,9 @@ fun AddExpenseScreen(
                                 label = { Text("Category") },
                                 leadingIcon = { Icon(Icons.Filled.Category, "Category") },
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoriesExpanded) },
-                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
                             )
                             ExposedDropdownMenu(
                                 expanded = categoriesExpanded,
@@ -270,10 +246,21 @@ fun AddExpenseScreen(
                                         }
                                     )
                                 }
+                                // --- ✅ ITEM #1 FIX ---
+                                Divider()
+                                DropdownMenuItem(
+                                    text = { Text("+ Add New Category") },
+                                    onClick = {
+                                        showAddCategoryDialog = true
+                                        categoriesExpanded = false
+                                    }
+                                )
+                                // --- END OF FIX ---
                             }
                         }
 
-                        // ... (Date Picker is unchanged, uses the autofill-proof Box)
+                        // --- 3. Date Picker (Item #2) ---
+                        // This already exists and works!
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -296,7 +283,7 @@ fun AddExpenseScreen(
                             )
                         }
 
-                        // ... (Note Field is unchanged)
+                        // --- 4. Note Field ---
                         OutlinedTextField(
                             value = note,
                             onValueChange = { note = it },
@@ -304,7 +291,8 @@ fun AddExpenseScreen(
                             leadingIcon = { Icon(Icons.Filled.Notes, "Note") },
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Done
+                                imeAction = ImeAction.Done,
+                                capitalization = KeyboardCapitalization.Sentences
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -312,7 +300,7 @@ fun AddExpenseScreen(
                 }
             }
 
-            // --- Save Button (Bottom Aligned) ---
+            // --- Save Button ---
             Button(
                 onClick = {
                     val amt = amount.toDoubleOrNull()!!
@@ -321,7 +309,7 @@ fun AddExpenseScreen(
                             amount = amt,
                             categoryId = selectedCat!!.id,
                             note = if (note.isBlank()) null else note,
-                            date = selectedDate.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
+                            date = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
                         )
                     )
                     navController.popBackStack()
@@ -340,10 +328,20 @@ fun AddExpenseScreen(
         }
     }
 
+    // --- ✅ ITEM #1 FIX: Add Category Dialog ---
+    if (showAddCategoryDialog) {
+        AddCategoryDialog(
+            catVm = catVm,
+            onDismiss = { showAddCategoryDialog = false }
+        )
+    }
+
     // --- Date Picker Dialog (Unchanged) ---
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toEpochSecond() * 1000
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -366,4 +364,53 @@ fun AddExpenseScreen(
             DatePicker(state = datePickerState)
         }
     }
+}
+
+// --- ✅ ITEM #1 FIX: New Composable for the Dialog ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddCategoryDialog(
+    catVm: CategoryViewModel,
+    onDismiss: () -> Unit
+) {
+    var newCategoryName by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add New Category") },
+        text = {
+            OutlinedTextField(
+                value = newCategoryName,
+                onValueChange = { newCategoryName = it },
+                label = { Text("Category Name") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { focusManager.clearFocus() }
+                )
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (newCategoryName.isNotBlank()) {
+                        catVm.addCategory(newCategoryName)
+                        onDismiss()
+                    }
+                },
+                enabled = newCategoryName.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
