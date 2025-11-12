@@ -46,6 +46,7 @@ import java.util.Date
 fun AddExpenseScreen(
     navController: NavController,
     categoryId: String?,
+    expenseId: String?,
     proViewModel: ProViewModel
 ) {
     val context = LocalContext.current
@@ -55,6 +56,7 @@ fun AddExpenseScreen(
     val expVm: ExpenseViewModel = viewModel()
     val catVm: CategoryViewModel = viewModel()
     val categories by catVm.categories.collectAsState()
+    val isEditMode = expenseId != null
 
     var amount by remember { mutableStateOf("") }
     var selectedCat by remember { mutableStateOf<Category?>(null) }
@@ -128,11 +130,32 @@ fun AddExpenseScreen(
         }
     }
 
+
+    var expenseToEdit by remember { mutableStateOf<Expense?>(null) }
+
+    // This LaunchedEffect will run ONCE if we are in edit mode
+    LaunchedEffect(expenseId, categories) {
+        if (isEditMode) {
+            val id = expenseId?.toIntOrNull() ?: -1
+            expVm.getExpenseById(id).collect { expense ->
+                if (expense != null) {
+                    expenseToEdit = expense // Save the expense
+                    amount = String.format("%.2f", expense.amount).removeSuffix(".00")
+                    note = expense.note ?: ""
+                    // Find and set the category
+                    selectedCat = categories.find { it.id == expense.categoryId }
+                    // Find and set the date
+                    selectedDate = LocalDate.ofEpochDay(expense.date / (1000 * 60 * 60 * 24))
+                }
+            }
+        }
+    }
+
     // --- Scaffold ---
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Expense") },
+                title = { Text(if (isEditMode) "Edit Expense" else "Add Expense") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Go Back")
@@ -304,14 +327,29 @@ fun AddExpenseScreen(
             Button(
                 onClick = {
                     val amt = amount.toDoubleOrNull()!!
-                    expVm.addExpense(
-                        Expense(
+                    val dateInMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+                    // ✅ THIS IS THE NEW LOGIC
+                    if (isEditMode) {
+                        // We are UPDATING an existing expense
+                        val updatedExpense = expenseToEdit!!.copy(
                             amount = amt,
                             categoryId = selectedCat!!.id,
                             note = if (note.isBlank()) null else note,
-                            date = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                            date = dateInMillis
                         )
-                    )
+                        expVm.updateExpense(updatedExpense)
+                    } else {
+                        // We are ADDING a new expense
+                        expVm.addExpense(
+                            Expense(
+                                amount = amt,
+                                categoryId = selectedCat!!.id,
+                                note = if (note.isBlank()) null else note,
+                                date = dateInMillis
+                            )
+                        )
+                    }
                     navController.popBackStack()
                 },
                 enabled = isFormValid,
@@ -321,7 +359,7 @@ fun AddExpenseScreen(
                     .align(Alignment.BottomCenter)
             ) {
                 Text(
-                    text = "Save",
+                    text = if (isEditMode) "Save Changes" else "Save",
                     style = MaterialTheme.typography.titleMedium
                 )
             }

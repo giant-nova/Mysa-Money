@@ -35,6 +35,7 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import android.util.Log
+import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.LoadAdError
@@ -42,6 +43,7 @@ import com.google.android.gms.ads.LoadAdError
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpenseListScreen(
+    navController: NavController,
     onMenuClick: () -> Unit,
     proViewModel: ProViewModel
 ) {
@@ -116,7 +118,10 @@ fun ExpenseListScreen(
                             expense = expense,
                             categoryName = categoryName, // <-- Pass the name here
                             onDelete = { expVm.deleteExpense(expense) },
-                            modifier = Modifier.animateContentSize() // Your chosen animation
+                            onClick = {
+                                navController.navigate("expense_entry?expenseId=${expense.id}")
+                            },
+                            modifier = Modifier.animateContentSize()
                         )
                     }
                 }

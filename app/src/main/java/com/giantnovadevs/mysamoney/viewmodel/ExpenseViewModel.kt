@@ -9,6 +9,7 @@ import com.giantnovadevs.mysamoney.data.AppDatabase
 import com.giantnovadevs.mysamoney.data.CategoryTotal
 import com.giantnovadevs.mysamoney.data.Expense
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +42,15 @@ class ExpenseViewModel(app: Application) : AndroidViewModel(app) {
 
     val selectedMonthYear = MutableStateFlow(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM")))
 
+
+    fun getExpenseById(id: Int): Flow<Expense?> {
+        return dao.getExpenseById(id)
+    }
+
+    // ✅ ADD THIS
+    fun updateExpense(expense: Expense) = viewModelScope.launch(Dispatchers.IO) {
+        dao.update(expense)
+    }
     fun getMonthYearDisplay(): String {
         return YearMonth.parse(selectedMonthYear.value, monthFormatter)
             .format(displayFormatter)

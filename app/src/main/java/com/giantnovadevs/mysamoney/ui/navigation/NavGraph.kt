@@ -31,17 +31,28 @@ fun AppNavGraph(
     NavHost(navController = navController, startDestination = "home") {
         composable("home") { HomeScreen(navController, onMenuClick = onMenuClick) }
         composable(
-            route = "add?categoryId={categoryId}", // Define an optional parameter
-            arguments = listOf(navArgument("categoryId") {
-                type = NavType.StringType // Pass as string, can be null
-                nullable = true
-            })
+            route = "expense_entry?categoryId={categoryId}&expenseId={expenseId}",
+            arguments = listOf(
+                navArgument("categoryId") {
+                    type = NavType.StringType
+                    nullable = true
+                },
+                navArgument("expenseId") { // The ID of the expense to edit
+                    type = NavType.StringType
+                    nullable = true
+                }
+            )
         ) { backStackEntry ->
-            // Get the categoryId from the navigation arguments
             val categoryId = backStackEntry.arguments?.getString("categoryId")
-            AddExpenseScreen(navController, categoryId, proViewModel)
+            val expenseId = backStackEntry.arguments?.getString("expenseId")
+            AddExpenseScreen(
+                navController = navController,
+                categoryId = categoryId,
+                expenseId = expenseId, // Pass the new ID
+                proViewModel = proViewModel
+            )
         }
-        composable("list") { ExpenseListScreen(onMenuClick = onMenuClick, proViewModel) }
+        composable("list") { ExpenseListScreen(navController, onMenuClick = onMenuClick, proViewModel) }
         composable("summary") { SummaryScreen(navController, onMenuClick = onMenuClick) }
         composable("categories") { CategoryScreen(navController, onMenuClick = onMenuClick) }
         composable("about") {
