@@ -17,7 +17,7 @@ class GoogleDriveManager(
 ) {
     // The database file name
     companion object {
-        const val BACKUP_FILE_NAME = "com.giantnovadevs.mysamoney.db"
+        const val BACKUP_FILE_NAME = "mysamoney.db"
     }
 
     // 1. Create the authorized Drive service client
