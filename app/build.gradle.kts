@@ -145,6 +145,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:23.2.0")
 
     implementation("com.android.billingclient:billing-ktx:7.0.0")
+    implementation("com.itextpdf.android:kernel-android:7.2.5")
+    implementation("com.itextpdf.android:layout-android:7.2.5")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
