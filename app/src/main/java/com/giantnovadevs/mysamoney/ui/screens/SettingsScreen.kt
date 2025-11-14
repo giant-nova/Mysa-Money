@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
@@ -244,6 +246,7 @@ fun SettingsScreen(
             } else {
                 // User is SIGNED IN
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // "Signed in as" text (unchanged)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -254,103 +257,100 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        TextButton(
-                            onClick = {
-                                authViewModel.signOut()
-                                // Optional: Clear lastOperation on sign-out
-                                lastOperation = null
-                            }
-                        ) {
+                        TextButton(onClick = { authViewModel.signOut() }) {
                             Text("Sign Out")
                         }
                     }
 
-                    // Backup button
-                    Button(
-                        onClick = {
-                            if (isPro) {
+                    // New Button Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Backup button (Primary)
+                        Button(
+                            onClick = {
                                 lastOperation = "backup"
                                 backupViewModel.backupDatabase()
-                            } else {
-                                // Not Pro, send to Upgrade screen
-                                navController.navigate("upgrade")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = backupState == BackupRestoreState.IDLE,
-                    ) {
-                        Text("Backup Data to Google Drive")
-                    }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = backupState == BackupRestoreState.IDLE,
+                        ) {
+                            Icon(
+                                Icons.Default.CloudUpload,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                            )
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Backup")
+                        }
 
-                    // Restore button
-                    Button(
-                        onClick = {
-                            if (isPro) {
+                        // Restore button (Secondary)
+                        FilledTonalButton(
+                            onClick = {
                                 lastOperation = "restore"
                                 backupViewModel.restoreDatabase()
-                            } else {
-                                // Not Pro, send to Upgrade screen
-                                navController.navigate("upgrade")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = backupState == BackupRestoreState.IDLE,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        ),
-                    ) {
-                        Text("Restore Data from Google Drive")
-                    }
-
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
-
-                    // --- ✅ NEW: Pro Upgrade Section ---
-                    Text(
-                        "Mysa Money Pro",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    if (isPro) {
-                        // User is Pro
-                        Text(
-                            "You are a Pro member! Thank you for your support.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        Button(
-                            onClick = {
-                                proViewModel.consumeTestPurchase {
-                                    // This will force a restart to clear the state
-                                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                                    intent!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                    context.startActivity(intent)
-                                    exitProcess(0)
-                                }
                             },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            ),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.weight(1f),
+                            enabled = backupState == BackupRestoreState.IDLE,
                         ) {
-                            Text("DEBUG: Consume Pro Purchase (to re-test)")
-                        }
-
-                    } else {
-                        // User is not Pro
-                        Button(
-                            onClick = {
-                                val activity = context as? Activity
-                                if (activity != null) {
-                                    proViewModel.launchPurchase(activity)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Upgrade to Pro ($proPrice)")
+                            Icon(
+                                Icons.Default.CloudDownload,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                            )
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Restore")
                         }
                     }
+                }
+            }
+            Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+            // Pro Upgrade Section ---
+            Text(
+                "Mysa Money Pro",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (isPro) {
+                // User is Pro
+                Text(
+                    "You are a Pro member! Thank you for your support.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Button(
+                    onClick = {
+                        proViewModel.consumeTestPurchase {
+                            // This will force a restart to clear the state
+                            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                            intent!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                            context.startActivity(intent)
+                            exitProcess(0)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("DEBUG: Consume Pro Purchase (to re-test)")
+                }
+
+            } else {
+                // User is not Pro
+                Button(
+                    onClick = {
+                        val activity = context as? Activity
+                        if (activity != null) {
+                            proViewModel.launchPurchase(activity)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Upgrade to Pro ($proPrice)")
                 }
             }
         }
