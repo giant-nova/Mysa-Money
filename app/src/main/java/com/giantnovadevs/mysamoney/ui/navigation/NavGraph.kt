@@ -85,8 +85,20 @@ fun AppNavGraph(
             IncomeListScreen(navController, onMenuClick = onMenuClick)
         }
 
-        composable("add_income") {
-            AddIncomeScreen(navController)
+        composable(
+            route = "income_entry?id={id}",
+            arguments = listOf(
+                navArgument("id") {
+                    type = NavType.StringType
+                    nullable = true
+                }
+            )
+        ) { backStackEntry ->
+            val incomeId = backStackEntry.arguments?.getString("id")
+            AddIncomeScreen(
+                navController = navController,
+                incomeId = incomeId // Pass the ID
+            )
         }
 
         composable("camera_screen") {
