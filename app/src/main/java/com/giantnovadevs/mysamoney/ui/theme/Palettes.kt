@@ -297,6 +297,164 @@ private val AmberDarkColors = darkColorScheme(
     outline = Color(0xFFA08D85)
 )
 
+// --- 6. Teal Palette ---
+// Seed: Color(0xFF006A60)
+private val TealLightColors = lightColorScheme(
+    primary = Color(0xFF006A60),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFF74F8E5),
+    onPrimaryContainer = Color(0xFF00201C),
+    secondary = Color(0xFF4A635F),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFCCE8E2),
+    onSecondaryContainer = Color(0xFF05201C),
+    tertiary = Color(0xFF466179),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFCCE5FF),
+    onTertiaryContainer = Color(0xFF001E32),
+    error = md_theme_light_error,
+    onError = md_theme_light_onError,
+    errorContainer = md_theme_light_errorContainer,
+    onErrorContainer = md_theme_light_onErrorContainer,
+    background = Color(0xFFFCFCFC),
+    onBackground = Color(0xFF191C1B),
+    surface = Color(0xFFFCFCFC),
+    onSurface = Color(0xFF191C1B),
+    surfaceVariant = Color(0xFFDAE5E2),
+    onSurfaceVariant = Color(0xFF3F4947),
+    outline = Color(0xFF6F7977)
+)
+private val TealDarkColors = darkColorScheme(
+    primary = Color(0xFF53DBC9),
+    onPrimary = Color(0xFF003731),
+    primaryContainer = Color(0xFF005048),
+    onPrimaryContainer = Color(0xFF74F8E5),
+    secondary = Color(0xFFB1CCC6),
+    onSecondary = Color(0xFF1C3531),
+    secondaryContainer = Color(0xFF324B47),
+    onSecondaryContainer = Color(0xFFCCE8E2),
+    tertiary = Color(0xFFADCFFF),
+    onTertiary = Color(0xFF163349),
+    tertiaryContainer = Color(0xFF2E4A61),
+    onTertiaryContainer = Color(0xFFCCE5FF),
+    error = md_theme_dark_error,
+    onError = md_theme_dark_onError,
+    errorContainer = md_theme_dark_errorContainer,
+    onErrorContainer = md_theme_dark_onErrorContainer,
+    background = Color(0xFFFCFCFC),
+    onBackground = Color(0xFFE1E3E2),
+    surface = Color(0xFFFCFCFC),
+    onSurface = Color(0xFFE1E3E2),
+    surfaceVariant = Color(0xFF3F4947),
+    onSurfaceVariant = Color(0xFFBEC9C6),
+    outline = Color(0xFF899391)
+)
+
+// --- 7. Indigo Palette ---
+// Seed: Color(0xFF3F51B5)
+private val IndigoLightColors = lightColorScheme(
+    primary = Color(0xFF3F51B5),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFDEE0FF),
+    onPrimaryContainer = Color(0xFF000F5D),
+    secondary = Color(0xFF5B5D72),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFE0E0F9),
+    onSecondaryContainer = Color(0xFF181A2C),
+    tertiary = Color(0xFF77536D),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFFD7F0),
+    onTertiaryContainer = Color(0xFF2D1128),
+    error = md_theme_light_error,
+    onError = md_theme_light_onError,
+    errorContainer = md_theme_light_errorContainer,
+    onErrorContainer = md_theme_light_onErrorContainer,
+    background = Color(0xFFFCFCFC),
+    onBackground = Color(0xFF1B1B1F),
+    surface = Color(0xFFFCFCFC),
+    onSurface = Color(0xFF1B1B1F),
+    surfaceVariant = Color(0xFFE4E1EC),
+    onSurfaceVariant = Color(0xFF46464F),
+    outline = Color(0xFF777680)
+)
+private val IndigoDarkColors = darkColorScheme(
+    primary = Color(0xFFBAC3FF),
+    onPrimary = Color(0xFF001D91),
+    primaryContainer = Color(0xFF26399C),
+    onPrimaryContainer = Color(0xFFDEE0FF),
+    secondary = Color(0xFFC4C4DD),
+    onSecondary = Color(0xFF2D2F42),
+    secondaryContainer = Color(0xFF434559),
+    onSecondaryContainer = Color(0xFFE0E0F9),
+    tertiary = Color(0xFFE6BAD7),
+    onTertiary = Color(0xFF45263E),
+    tertiaryContainer = Color(0xFF5D3C55),
+    onTertiaryContainer = Color(0xFFFFD7F0),
+    error = md_theme_dark_error,
+    onError = md_theme_dark_onError,
+    errorContainer = md_theme_dark_errorContainer,
+    onErrorContainer = md_theme_dark_onErrorContainer,
+    background = Color(0xFFFCFCFC),
+    onBackground = Color(0xFFE4E2E6),
+    surface = Color(0xFFFCFCFC),
+    onSurface = Color(0xFFE4E2E6),
+    surfaceVariant = Color(0xFF46464F),
+    onSurfaceVariant = Color(0xFFC7C5D0),
+    outline = Color(0xFF91909A)
+)
+
+// --- 8. Red Palette ---
+// Seed: Color(0xFFB00020)
+private val RedLightColors = lightColorScheme(
+    primary = Color(0xFFB00020),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFFFDAD6),
+    onPrimaryContainer = Color(0xFF410004),
+    secondary = Color(0xFF775653),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFFFDAD6),
+    onSecondaryContainer = Color(0xFF2C1513),
+    tertiary = Color(0xFF755A2F),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFFDEAC),
+    onTertiaryContainer = Color(0xFF281900),
+    error = md_theme_light_error,
+    onError = md_theme_light_onError,
+    errorContainer = md_theme_light_errorContainer,
+    onErrorContainer = md_theme_light_onErrorContainer,
+    background = Color(0xFFFCFCFC),
+    onBackground = Color(0xFF201A19),
+    surface = Color(0xFFFCFCFC),
+    onSurface = Color(0xFF201A19),
+    surfaceVariant = Color(0xFFF5DDDA),
+    onSurfaceVariant = Color(0xFF534341),
+    outline = Color(0xFF857371)
+)
+private val RedDarkColors = darkColorScheme(
+    primary = Color(0xFFFFB4AB),
+    onPrimary = Color(0xFF69000C),
+    primaryContainer = Color(0xFF930016),
+    onPrimaryContainer = Color(0xFFFFDAD6),
+    secondary = Color(0xFFE7BDB8),
+    onSecondary = Color(0xFF442926),
+    secondaryContainer = Color(0xFF5D3F3C),
+    onSecondaryContainer = Color(0xFFFFDAD6),
+    tertiary = Color(0xFFE5C18D),
+    onTertiary = Color(0xFF412D05),
+    tertiaryContainer = Color(0xFF5B431A),
+    onTertiaryContainer = Color(0xFFFFDEAC),
+    error = md_theme_dark_error,
+    onError = md_theme_dark_onError,
+    errorContainer = md_theme_dark_errorContainer,
+    onErrorContainer = md_theme_dark_onErrorContainer,
+    background = Color(0xFFFCFCFC),
+    onBackground = Color(0xFFEDE0DE),
+    surface = Color(0xFFFCFCFC),
+    onSurface = Color(0xFFEDE0DE),
+    surfaceVariant = Color(0xFF534341),
+    onSurfaceVariant = Color(0xFFD8C2BF),
+    outline = Color(0xFFA08C8A)
+)
 val BluePalette = AppColorPalette(
     lightColorScheme = BlueLightColors,
     darkColorScheme = BlueDarkColors
@@ -322,6 +480,17 @@ val AmberPalette = AppColorPalette(
     darkColorScheme = AmberDarkColors
 )
 
-// --- Public List of All Palettes ---
+val TealPalette = AppColorPalette(
+    lightColorScheme = TealLightColors,
+    darkColorScheme = TealDarkColors
+)
 
-val AppPalettes = listOf(BluePalette, GreenPalette, PurplePalette, RosePalette, AmberPalette)
+val IndigoPalette = AppColorPalette(
+    lightColorScheme = IndigoLightColors,
+    darkColorScheme = IndigoDarkColors
+)
+
+val RedPalette = AppColorPalette(
+    lightColorScheme = RedLightColors,
+    darkColorScheme = RedDarkColors
+)

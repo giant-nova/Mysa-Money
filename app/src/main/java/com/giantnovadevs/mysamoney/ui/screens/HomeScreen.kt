@@ -133,7 +133,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate("add?categoryId=null") },
+                onClick = { navController.navigate("expense_entry?categoryId=null&expenseId=null") },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -197,6 +197,9 @@ fun HomeScreen(
                 ExpenseItem(
                     expense = expense,
                     categoryName = categoryName,
+                    onClick = {
+                        navController.navigate("expense_entry?expenseId=${expense.id}")
+                    },
                     onDelete = { expenseVm.deleteExpense(expense) }
                 )
             }

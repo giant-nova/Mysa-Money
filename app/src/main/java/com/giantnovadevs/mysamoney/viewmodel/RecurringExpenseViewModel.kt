@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.giantnovadevs.mysamoney.data.AppDatabase
 import com.giantnovadevs.mysamoney.data.Frequency
 import com.giantnovadevs.mysamoney.data.RecurringExpense
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -27,7 +29,7 @@ class RecurringExpenseViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Calculates the first valid due date that is on or after today.
      */
-    private fun calculateFirstDueDate(startDate: LocalDate, frequency: Frequency): LocalDate {
+    fun calculateFirstDueDate(startDate: LocalDate, frequency: Frequency): LocalDate {
         var nextDate = startDate
         val today = LocalDate.now()
 
@@ -46,6 +48,21 @@ class RecurringExpenseViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         return nextDate
+    }
+
+    fun getRecurringExpenseById(id: Int): Flow<RecurringExpense?> {
+        return dao.getById(id)
+    }
+
+    /**
+     * Updates an existing recurring expense.
+     * Note: We don't need to recalculate the next due date,
+     * as the user will set it in the edit screen.
+     */
+    fun updateRecurringExpense(expense: RecurringExpense) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.upsert(expense) // Upsert will handle update
+        }
     }
 
 

@@ -1,5 +1,6 @@
 package com.giantnovadevs.mysamoney.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -16,15 +17,21 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun ExpenseItem(expense: Expense, categoryName: String, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+fun ExpenseItem(
+    expense: Expense,
+    categoryName: String,
+    onDelete: () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     // We can remember the formatter
     val df = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
-
     // ✅ Using the same layout as HomeScreen's row for consistency
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(

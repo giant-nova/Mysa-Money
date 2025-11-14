@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -13,11 +14,17 @@ interface IncomeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(income: Income)
 
+    @Update
+    suspend fun update(income: Income)
+
     @Delete
     suspend fun delete(income: Income)
 
     @Query("SELECT * FROM incomes ORDER BY date DESC")
     fun getAllIncomes(): Flow<List<Income>>
+
+    @Query("SELECT * FROM incomes WHERE id = :id")
+    fun getById(id: Int): Flow<Income?>
 
     @Query("SELECT SUM(amount) FROM incomes WHERE date BETWEEN :start AND :end")
     fun getTotalIncomeInRange(start: Long, end: Long): Flow<Double?>

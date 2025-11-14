@@ -1,6 +1,7 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,7 +48,6 @@ fun BudgetScreen(
                         Icon(Icons.Filled.Menu, contentDescription = "Open Menu")
                     }
                 },
-                // This uses your dynamic theme colors
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -63,7 +64,6 @@ fun BudgetScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(categories, key = { it.id }) { category ->
-                // Find the existing budget for this category, if any
                 val budget = budgets.find { it.categoryId == category.id }
 
                 BudgetRow(
@@ -86,11 +86,27 @@ private fun BudgetRow(
 ) {
     val focusManager = LocalFocusManager.current
 
-    // This text state is local to the row.
-    // We format the initial amount to avoid "0.0"
-    val initialAmount = if (currentBudgetAmount == 0.0) "" else currentBudgetAmount.toString()
+    // --- ✅ ITEM #8 FIX: Format the initial amount ---
+    val initialAmount = if (currentBudgetAmount == 0.0) {
+        ""
+    } else if (currentBudgetAmount % 1 == 0.0) {
+        // It's a whole number, format as "1000"
+        "%.0f".format(currentBudgetAmount)
+    } else {
+        // It's a decimal, format as "1000.50"
+        "%.2f".format(currentBudgetAmount)
+    }
+    // --- END OF FIX ---
+
     var textValue by remember(currentBudgetAmount) {
         mutableStateOf(initialAmount)
+    }
+
+    // --- ✅ Helper function for saving ---
+    val saveBudget = {
+        val newAmount = textValue.toDoubleOrNull() ?: 0.0
+        onBudgetSet(newAmount)
+        focusManager.clearFocus()
     }
 
     Card(
@@ -104,19 +120,16 @@ private fun BudgetRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Category Name
             Text(
                 text = category.name,
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f)
             )
 
-            // Budget Amount Text Field
             OutlinedTextField(
                 value = textValue,
                 onValueChange = {
-                    // Allow only valid numbers
-                    if (it.matches(Regex("^\\d*\\.?\\d*\$"))) {
+                    if (it.matches(Regex("^\\d*\\.?\\d{0,2}\$"))) { // Allow 2 decimal places
                         textValue = it
                     }
                 },
@@ -125,16 +138,18 @@ private fun BudgetRow(
                 modifier = Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Done // Show "Done" button on keyboard
+                    imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
-                    onDone = {
-                        // When "Done" is pressed, save the budget
-                        val newAmount = textValue.toDoubleOrNull() ?: 0.0
-                        onBudgetSet(newAmount)
-                        focusManager.clearFocus() // Hide the keyboard
+                    onDone = { saveBudget() } // Save on keyboard "Done"
+                ),
+                // --- ✅ ITEM #8 FIX: Add a tick button ---
+                trailingIcon = {
+                    IconButton(onClick = { saveBudget() }) {
+                        Icon(Icons.Default.Check, "Save Budget")
                     }
-                )
+                }
+                // --- END OF FIX ---
             )
         }
     }

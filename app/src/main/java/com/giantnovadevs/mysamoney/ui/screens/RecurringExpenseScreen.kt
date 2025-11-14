@@ -32,6 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -42,7 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 @Composable
 fun RecurringExpenseScreen(
     navController: NavController,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
 ) {
     val recurringVm: RecurringExpenseViewModel = viewModel()
     val catVm: CategoryViewModel = viewModel()
@@ -70,7 +71,7 @@ fun RecurringExpenseScreen(
             FloatingActionButton(
                 onClick = {
                     // We'll create this screen next
-                    navController.navigate("add_recurring_expense")
+                    navController.navigate("recurring_expense_entry?id=null")
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -101,7 +102,11 @@ fun RecurringExpenseScreen(
                         RecurringExpenseRow(
                             expense = expense,
                             categoryName = categoryName,
-                            onDelete = { recurringVm.deleteRecurringExpense(expense) }
+                            onDelete = { recurringVm.deleteRecurringExpense(expense) },
+                            onClick = {
+                                // Pass the navigation logic here
+                                navController.navigate("recurring_expense_entry?id=${expense.id}")
+                            }
                         )
                     }
                 }
@@ -146,14 +151,17 @@ private fun RecurringEmptyState() {
 private fun RecurringExpenseRow(
     expense: RecurringExpense,
     categoryName: String,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onClick: () -> Unit
 ) {
     val dateFormatter = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
     val nextDueDate = dateFormatter.format(Date(expense.nextDueDate))
     val frequencyText = expense.frequency.name.lowercase().replaceFirstChar { it.titlecase() }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(

@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 // Simple class to represent the UI state of the backup/restore buttons
 enum class BackupRestoreState {
@@ -48,19 +47,21 @@ class BackupViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
 
-        viewModelScope.launch(Dispatchers.IO) {  // <-- Background dispatcher for I/O
-            try {
-                _state.value = BackupRestoreState.LOADING  // Safe: StateFlow is thread-safe
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value = BackupRestoreState.LOADING
 
+            try {
+                // 1. Close the database completely
+                AppDatabase.closeInstance()
+
+                // 2. Perform the backup
                 val success = driveManager!!.backupDatabase()
 
-                withContext(Dispatchers.Main) {  // <-- Switch to Main for UI update
-                    _state.value = if (success) BackupRestoreState.SUCCESS else BackupRestoreState.ERROR
-                }
+                // 3. Set the state
+                _state.value = if (success) BackupRestoreState.SUCCESS else BackupRestoreState.ERROR
+
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    _state.value = BackupRestoreState.ERROR
-                }
+                _state.value = BackupRestoreState.ERROR
             }
         }
     }
@@ -75,29 +76,24 @@ class BackupViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
 
-        viewModelScope.launch(Dispatchers.IO) {  // <-- Background dispatcher for I/O
-            try {
-                _state.value = BackupRestoreState.LOADING  // Safe: StateFlow is thread-safe
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value = BackupRestoreState.LOADING
 
+            try {
                 // 1. CRITICAL: Close the database completely.
-                // This ensures no files are "locked" by Room.
                 AppDatabase.closeInstance()
 
                 // 2. Perform the download/restore
                 val success = driveManager!!.restoreDatabase()
 
-                withContext(Dispatchers.Main) {  // <-- Switch to Main for UI update
-                    if (success) {
-                        _state.value = BackupRestoreState.SUCCESS
-                        // The app must be restarted to re-open the database
-                    } else {
-                        _state.value = BackupRestoreState.ERROR
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
+                if (success) {
+                    _state.value = BackupRestoreState.SUCCESS
+                    // The app must be restarted to re-open the database
+                } else {
                     _state.value = BackupRestoreState.ERROR
                 }
+            } catch (e: Exception) {
+                _state.value = BackupRestoreState.ERROR
             }
         }
     }

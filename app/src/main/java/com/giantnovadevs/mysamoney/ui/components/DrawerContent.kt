@@ -63,8 +63,8 @@ fun AppDrawer(navController: NavController, onClose: () -> Unit, proViewModel: P
             DrawerItem(
                 label = "Add Expense",
                 icon = Icons.Default.Add,
-                isSelected = currentRoute == "add",
-                onClick = { navController.navigate("add"); onClose() }
+                isSelected = currentRoute?.startsWith("expense_entry") == true,
+                onClick = { navController.navigate("expense_entry?categoryId=null&expenseId=null"); onClose() }
             )
             DrawerItem(
                 label = "All Expenses",

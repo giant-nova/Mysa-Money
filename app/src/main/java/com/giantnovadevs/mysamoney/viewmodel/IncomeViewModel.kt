@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.giantnovadevs.mysamoney.data.AppDatabase
 import com.giantnovadevs.mysamoney.data.Income
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -36,14 +38,17 @@ class IncomeViewModel(app: Application) : AndroidViewModel(app) {
         list.filter { it.date in startOfMonth..endOfMonth }
             .sumOf { it.amount }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
-    /**
-     * Adds a new income record.
-     */
+
+
+    fun getIncomeById(id: Int): Flow<Income?> {
+        return dao.getById(id)
+    }
+
     fun addIncome(amount: Double, note: String, date: LocalDate) {
-        viewModelScope.launch {
-            // Convert LocalDate to a timestamp
-            val timestamp = date.atStartOfDay()
-                .toEpochSecond(java.time.ZoneOffset.UTC) * 1000
+        viewModelScope.launch(Dispatchers.IO) { // ✅ Run on IO
+            val timestamp = date.atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
 
             val income = Income(
                 amount = amount,
@@ -52,6 +57,11 @@ class IncomeViewModel(app: Application) : AndroidViewModel(app) {
             )
             dao.insert(income)
         }
+    }
+
+    // ✅ ADD THIS
+    fun updateIncome(income: Income) = viewModelScope.launch(Dispatchers.IO) {
+        dao.update(income)
     }
 
     /**

@@ -17,14 +17,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.Category
 import com.giantnovadevs.mysamoney.data.Frequency
+import com.giantnovadevs.mysamoney.data.RecurringExpense
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.RecurringExpenseViewModel
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddRecurringExpenseScreen(navController: NavController) {
+fun AddRecurringExpenseScreen(
+    navController: NavController,
+    expenseId: String?
+) {
     val recurringVm: RecurringExpenseViewModel = viewModel()
     val catVm: CategoryViewModel = viewModel()
     val categories by catVm.categories.collectAsState()
@@ -48,6 +53,28 @@ fun AddRecurringExpenseScreen(navController: NavController) {
         )
     }
 
+    val isEditMode = expenseId != null
+    var expenseToEdit by remember { mutableStateOf<RecurringExpense?>(null) }
+
+    // This LaunchedEffect will run ONCE if we are in edit mode
+    LaunchedEffect(expenseId, categories) {
+        if (isEditMode && categories.isNotEmpty()) {
+            val id = expenseId?.toIntOrNull() ?: -1
+            recurringVm.getRecurringExpenseById(id).collect { expense ->
+                if (expense != null) {
+                    expenseToEdit = expense
+                    amount = String.format("%.2f", expense.amount).removeSuffix(".00")
+                    note = expense.note ?: ""
+                    selectedFrequency = expense.frequency
+                    // Find and set the category
+                    selectedCat = categories.find { it.id == expense.categoryId }
+                    // Find and set the date
+                    selectedDate = LocalDate.ofEpochDay(expense.startDate / (1000 * 60 * 60 * 24))
+                }
+            }
+        }
+    }
+
     // Auto-select first category
     LaunchedEffect(categories) {
         if (selectedCat == null && categories.isNotEmpty()) {
@@ -58,7 +85,7 @@ fun AddRecurringExpenseScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Subscription") },
+                title = { Text(if (isEditMode) "Edit Subscription" else "Add Subscription") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Go Back")
@@ -215,13 +242,32 @@ fun AddRecurringExpenseScreen(navController: NavController) {
             // --- Save Button (Bottom Aligned) ---
             Button(
                 onClick = {
-                    recurringVm.addRecurringExpense(
-                        amount = amount.toDoubleOrNull() ?: 0.0,
-                        categoryId = selectedCat!!.id,
-                        note = if (note.isBlank()) null else note,
-                        frequency = selectedFrequency,
-                        startDate = selectedDate
-                    )
+                    val date = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+                    // THIS IS THE NEW LOGIC
+                    if (isEditMode) {
+                        // We are UPDATING
+                        val updatedExpense = expenseToEdit!!.copy(
+                            amount = amount.toDoubleOrNull() ?: 0.0,
+                            categoryId = selectedCat!!.id,
+                            note = if (note.isBlank()) null else note,
+                            frequency = selectedFrequency,
+                            startDate = date,
+                            // Re-calculate next due date based on edited start date
+                            nextDueDate = recurringVm.calculateFirstDueDate(selectedDate, selectedFrequency)
+                                .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        )
+                        recurringVm.updateRecurringExpense(updatedExpense)
+                    } else {
+                        // We are ADDING
+                        recurringVm.addRecurringExpense(
+                            amount = amount.toDoubleOrNull() ?: 0.0,
+                            categoryId = selectedCat!!.id,
+                            note = if (note.isBlank()) null else note,
+                            frequency = selectedFrequency,
+                            startDate = selectedDate
+                        )
+                    }
                     navController.popBackStack()
                 },
                 enabled = isFormValid,
@@ -230,7 +276,10 @@ fun AddRecurringExpenseScreen(navController: NavController) {
                     .height(50.dp)
                     .align(Alignment.BottomCenter)
             ) {
-                Text("Save Subscription", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = if (isEditMode) "Save Changes" else "Save Subscription",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }
@@ -238,8 +287,9 @@ fun AddRecurringExpenseScreen(navController: NavController) {
     // --- Date Picker Dialog ---
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.atStartOfDay()
-                .toEpochSecond(java.time.ZoneOffset.UTC) * 1000
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },

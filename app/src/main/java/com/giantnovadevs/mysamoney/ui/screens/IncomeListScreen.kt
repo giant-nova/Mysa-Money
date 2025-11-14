@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.ui.text.style.TextAlign
 
@@ -52,7 +53,7 @@ fun IncomeListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate("add_income") },
+                onClick = { navController.navigate("income_entry?id=null") },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -79,7 +80,10 @@ fun IncomeListScreen(
                     items(incomes, key = { it.id }) { income ->
                         IncomeRow(
                             income = income,
-                            onDelete = { incomeVm.deleteIncome(income) }
+                            onDelete = { incomeVm.deleteIncome(income) },
+                            onClick = {
+                                navController.navigate("income_entry?id=${income.id}")
+                            }
                         )
                     }
                 }
@@ -123,13 +127,16 @@ private fun IncomeEmptyState() {
 @Composable
 private fun IncomeRow(
     income: Income,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onClick: () -> Unit
 ) {
     val dateFormatter = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
     val date = dateFormatter.format(Date(income.date))
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(

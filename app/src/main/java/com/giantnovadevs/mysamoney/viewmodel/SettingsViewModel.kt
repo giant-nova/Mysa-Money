@@ -16,7 +16,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontFamily
 import com.giantnovadevs.mysamoney.ui.theme.DefaultFontFamily
+import com.giantnovadevs.mysamoney.ui.theme.IndigoPalette
+import com.giantnovadevs.mysamoney.ui.theme.RedPalette
 import com.giantnovadevs.mysamoney.ui.theme.SerifFontFamily
+import com.giantnovadevs.mysamoney.ui.theme.TealPalette
+import kotlinx.coroutines.Dispatchers
 
 // Helper class to map string names to the actual palette objects
 data class ThemeOption(val name: String, val palette: AppColorPalette)
@@ -27,31 +31,34 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val preferencesManager = PreferencesManager(app)
 
     // All available themes
-    val themeOptions = listOf(
+    val freeThemes = listOf(
         ThemeOption("Blue", BluePalette),
-        ThemeOption("Green", GreenPalette),
-        ThemeOption("Rose", RosePalette),
-        ThemeOption("Purple", PurplePalette),
-        ThemeOption("Amber", AmberPalette)
+        ThemeOption("Green", GreenPalette)
     )
 
-    // A flow that emits the *currently selected* AppColorPalette
+    val proThemes = listOf(
+        ThemeOption("Rose", RosePalette),
+        ThemeOption("Purple", PurplePalette),
+        ThemeOption("Amber", AmberPalette),
+        ThemeOption("Teal", TealPalette),
+        ThemeOption("Indigo", IndigoPalette),
+        ThemeOption("Red", RedPalette)
+    )
+
+    private val allThemes = freeThemes + proThemes
+
     val currentTheme = preferencesManager.theme
         .map { themeName ->
-            // Find the palette object that matches the saved name
-            themeOptions.find { it.name == themeName }?.palette ?: BluePalette
+            allThemes.find { it.name == themeName }?.palette ?: BluePalette
         }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            BluePalette // Default to Blue
+            BluePalette
         )
 
-    /**
-     * Called by the UI when a new theme is selected.
-     */
     fun saveTheme(themeOption: ThemeOption) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             preferencesManager.saveTheme(themeOption.name)
         }
     }

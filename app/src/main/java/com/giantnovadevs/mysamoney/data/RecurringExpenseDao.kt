@@ -32,4 +32,7 @@ interface RecurringExpenseDao {
      */
     @Query("SELECT * FROM recurring_expenses WHERE nextDueDate <= :todayTimestamp")
     suspend fun getDueExpenses(todayTimestamp: Long): List<RecurringExpense>
+
+    @Query("SELECT * FROM recurring_expenses WHERE id = :id")
+    fun getById(id: Int): Flow<RecurringExpense?>
 }
