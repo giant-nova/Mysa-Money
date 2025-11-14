@@ -24,6 +24,7 @@ class PreferencesManager(context: Context) {
         val FONT_KEY = stringPreferencesKey("font_preference")
         val PRO_KEY = booleanPreferencesKey("pro_status")
         val FREE_SCANS_KEY = intPreferencesKey("free_scans_remaining")
+        val MESSAGE_CREDITS_KEY = intPreferencesKey("message_credits")
     }
 
     /**
@@ -44,6 +45,20 @@ class PreferencesManager(context: Context) {
             if (currentScans > 0) {
                 preferences[FREE_SCANS_KEY] = currentScans - 1
             }
+        }
+    }
+
+    val messageCredits: Flow<Int> = dataStore.data
+        .map { preferences ->
+            preferences[MESSAGE_CREDITS_KEY] ?: 3 // Default to 3 free credit
+        }
+
+    /**
+     * Saves the new message credit count.
+     */
+    suspend fun saveMessageCredits(count: Int) {
+        dataStore.edit { preferences ->
+            preferences[MESSAGE_CREDITS_KEY] = count
         }
     }
 

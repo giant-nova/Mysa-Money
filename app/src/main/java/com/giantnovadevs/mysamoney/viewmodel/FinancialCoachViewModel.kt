@@ -8,12 +8,15 @@ import androidx.lifecycle.viewModelScope
 import com.giantnovadevs.mysamoney.BuildConfig
 import com.giantnovadevs.mysamoney.ads.AdManager
 import com.giantnovadevs.mysamoney.data.AppDatabase
+import com.giantnovadevs.mysamoney.data.PreferencesManager
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -41,6 +44,7 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     private val expenseDao = AppDatabase.getInstance(app).expenseDao()
     private val incomeDao = AppDatabase.getInstance(app).incomeDao()
     private val categoryDao = AppDatabase.getInstance(app).categoryDao()
+    private val preferencesManager = PreferencesManager(app)
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -68,8 +72,8 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     private val _showAdDialog = MutableStateFlow(false)
     val showAdDialog = _showAdDialog.asStateFlow()
 
-    private val _messageCredits = MutableStateFlow(1)
-    val messageCredits = _messageCredits.asStateFlow()
+    val messageCredits: StateFlow<Int> = preferencesManager.messageCredits
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
 
     private var isUserPro = false
 
@@ -81,9 +85,15 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
         adManager.loadRewardedAd()
     }
 
+    private fun updateMessageCredits(newCount: Int) {
+        viewModelScope.launch(Dispatchers.IO) { // Use IO for DataStore
+            preferencesManager.saveMessageCredits(newCount)
+        }
+    }
 
     fun askQuestion(question: String) {
-        if (!isUserPro && _messageCredits.value <= 0) {
+        val currentCredits = messageCredits.value
+        if (!isUserPro && currentCredits <= 0) {
             _showAdDialog.value = true
             return
         }
@@ -92,7 +102,7 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
             _isLoading.value = true
             // This is the bug fix: only subtract if not Pro
             if (!isUserPro) {
-                _messageCredits.value = _messageCredits.value - 1
+                updateMessageCredits(currentCredits - 1)
             }
             _uiState.value = _uiState.value + ChatMessage(question, isFromUser = true)
 
@@ -135,8 +145,6 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
 
                 _uiState.value = _uiState.value + ChatMessage(aiText, isFromUser = false)
             } catch (e: Exception) {
-                Log.e(TAG, "askQuestion failed", e)
-                // --- ✅ FIX 1: Show a friendly error message ---
                 _uiState.value = _uiState.value + ChatMessage("uh oh...Its not you, its us. Please try again later.", isFromUser = false)
             } finally {
                 _isLoading.value = false
@@ -216,7 +224,7 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     fun showRewardAd(activity: Activity) {
         _showAdDialog.value = false
         adManager.showRewardedAd(activity) {
-            _messageCredits.value = _messageCredits.value + 3
+            updateMessageCredits(messageCredits.value + 3)
             adManager.loadRewardedAd()
         }
     }
