@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -48,10 +49,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val themeOptions = viewModel.themeOptions
+    val freeThemes = viewModel.freeThemes
+    val proThemes = viewModel.proThemes
     val currentTheme by viewModel.currentTheme.collectAsState()
-    val fontOptions = viewModel.fontOptions
-    val currentFont by viewModel.currentFont.collectAsState()
 
     val account by authViewModel.account.collectAsState()
     val backupState by backupViewModel.state.collectAsState()
@@ -165,34 +165,37 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(16.dp))
+            Text("Free Themes", style = MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(themeOptions) { theme ->
+                items(freeThemes) { theme ->
                     ThemeColorButton(
                         theme = theme,
                         isSelected = theme.palette == currentTheme,
-                        onClick = { viewModel.saveTheme(theme) }
+                        isLocked = false, // Free themes are never locked
+                        onClick = {
+                            viewModel.saveTheme(theme)
+                        }
                     )
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            // --- Font Selector ---
-            Text(
-                "Select Font",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(16.dp))
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                fontOptions.forEachIndexed { index, fontOption ->
-                    SegmentedButton(
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = fontOptions.size),
-                        onClick = { viewModel.saveFont(fontOption) },
-                        selected = fontOption.fontFamily == currentFont
-                    ) {
-                        Text(fontOption.name)
-                    }
+            Spacer(Modifier.height(8.dp))
+            Text("Pro Themes (Unlock with Pro)", style = MaterialTheme.typography.labelLarge)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(proThemes) { theme ->
+                    ThemeColorButton(
+                        theme = theme,
+                        isSelected = theme.palette == currentTheme,
+                        isLocked = !isPro, // ✅ Lock if user is NOT Pro
+                        onClick = {
+                            if (isPro) {
+                                viewModel.saveTheme(theme)
+                            } else {
+                                // User is free, send to upgrade screen
+                                navController.navigate("upgrade")
+                            }
+                        }
+                    )
                 }
             }
 
@@ -358,6 +361,7 @@ fun SettingsScreen(
 private fun ThemeColorButton(
     theme: ThemeOption,
     isSelected: Boolean,
+    isLocked: Boolean,
     onClick: () -> Unit
 ) {
     val color = theme.palette.lightColorScheme.primary
@@ -374,7 +378,7 @@ private fun ThemeColorButton(
             .padding(4.dp)
             .clip(CircleShape)
             .background(color)
-            .clickable { onClick() },
+            .clickable(enabled = !isLocked) { onClick() },
         contentAlignment = Alignment.Center
     ) {
         if (isSelected) {
@@ -382,6 +386,12 @@ private fun ThemeColorButton(
                 Icons.Filled.Check,
                 contentDescription = "${theme.name} selected",
                 tint = theme.palette.lightColorScheme.onPrimary
+            )
+        } else if (isLocked) {
+            Icon(
+                Icons.Filled.Lock,
+                contentDescription = "${theme.name} locked",
+                tint = theme.palette.lightColorScheme.onPrimary.copy(alpha = 0.8f)
             )
         }
     }
