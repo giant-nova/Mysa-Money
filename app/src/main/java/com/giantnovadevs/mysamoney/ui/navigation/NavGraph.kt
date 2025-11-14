@@ -15,7 +15,7 @@ import com.giantnovadevs.mysamoney.viewmodel.BackupViewModel
 import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.SettingsViewModel
-
+import androidx.navigation.navArgument
 
 @Composable
 fun AppNavGraph(
@@ -66,8 +66,20 @@ fun AppNavGraph(
             )
         }
 
-        composable("add_recurring_expense") {
-            AddRecurringExpenseScreen(navController)
+        composable(
+            route = "recurring_expense_entry?id={id}",
+            arguments = listOf(
+                navArgument("id") {
+                    type = NavType.StringType
+                    nullable = true
+                }
+            )
+        ) { backStackEntry ->
+            val expenseId = backStackEntry.arguments?.getString("id")
+            AddRecurringExpenseScreen(
+                navController = navController,
+                expenseId = expenseId
+            )
         }
         composable("incomes") {
             IncomeListScreen(navController, onMenuClick = onMenuClick)
