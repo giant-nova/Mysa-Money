@@ -24,9 +24,10 @@ class FrequencyConverter {
         Category::class,
         Budget::class,
         RecurringExpense::class,
-        Income::class
+        Income::class,
+        ChatMessageEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(FrequencyConverter::class) // to handle the Enum
@@ -36,6 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun recurringExpenseDao(): RecurringExpenseDao
     abstract fun incomeDao(): IncomeDao
+    abstract fun chatDao(): ChatDao
 
     companion object {
         // This is the single instance of the database
@@ -123,15 +125,37 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Create the new 'chat_messages' table
+                db.execSQL(
+                    """
+                    CREATE TABLE chat_messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        message TEXT NOT NULL,
+                        isFromUser INTEGER NOT NULL,
+                        timestamp INTEGER NOT NULL
+                    )
+                    """
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             // Return the instance if it exists, otherwise create it
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "com.giantnovadevs.mysamoney.db"
+                    "mysamoney.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3,
+                        MIGRATION_3_4,
+                        MIGRATION_4_5,
+                        MIGRATION_5_6
+                    )
                     .build()
 
                 INSTANCE = instance

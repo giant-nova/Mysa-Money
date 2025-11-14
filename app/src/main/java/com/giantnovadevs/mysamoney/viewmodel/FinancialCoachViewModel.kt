@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.giantnovadevs.mysamoney.BuildConfig
 import com.giantnovadevs.mysamoney.ads.AdManager
 import com.giantnovadevs.mysamoney.data.AppDatabase
+import com.giantnovadevs.mysamoney.data.ChatMessageEntity
 import com.giantnovadevs.mysamoney.data.PreferencesManager
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import okhttp3.*
@@ -37,14 +40,11 @@ data class Candidate(val content: Content?, @SerializedName("finishReason") val 
 
 
 class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
-
-    // Add a Log Tag
-    private val TAG = "FinancialCoachVM"
-
     private val expenseDao = AppDatabase.getInstance(app).expenseDao()
     private val incomeDao = AppDatabase.getInstance(app).incomeDao()
     private val categoryDao = AppDatabase.getInstance(app).categoryDao()
     private val preferencesManager = PreferencesManager(app)
+    private val chatDao = AppDatabase.getInstance(app).chatDao()
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -54,15 +54,11 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
 
     private val gson = Gson()
 
-    private val _uiState = MutableStateFlow(
-        listOf(
-            ChatMessage(
-                message = "Hello! I'm your financial coach. Ask me anything about your spending habits or incomes.",
-                isFromUser = false
-            )
-        )
-    )
-    val chatHistory: StateFlow<List<ChatMessage>> = _uiState.asStateFlow()
+    val chatHistory: StateFlow<List<ChatMessage>> = chatDao.getChatHistory()
+        .map { entityList ->
+            entityList.map { ChatMessage(it.message, it.isFromUser) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -83,10 +79,23 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         adManager.loadRewardedAd()
+        viewModelScope.launch {
+            if (chatDao.getChatHistory().firstOrNull().isNullOrEmpty()) {
+                saveMessageToDb("Hello! I'm your financial coach. Ask me anything about your spending habits or incomes.", false)
+            }
+        }
+    }
+    private suspend fun saveMessageToDb(message: String, isFromUser: Boolean) {
+        val entity = ChatMessageEntity(
+            message = message,
+            isFromUser = isFromUser,
+            timestamp = System.currentTimeMillis()
+        )
+        chatDao.insertMessage(entity)
     }
 
     private fun updateMessageCredits(newCount: Int) {
-        viewModelScope.launch(Dispatchers.IO) { // Use IO for DataStore
+        viewModelScope.launch(Dispatchers.IO) {
             preferencesManager.saveMessageCredits(newCount)
         }
     }
@@ -100,11 +109,10 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
-            // This is the bug fix: only subtract if not Pro
             if (!isUserPro) {
                 updateMessageCredits(currentCredits - 1)
             }
-            _uiState.value = _uiState.value + ChatMessage(question, isFromUser = true)
+            saveMessageToDb(question, true)
 
             try {
                 val prompt = buildContextPrompt(question)
@@ -117,12 +125,7 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
                 val json = gson.toJson(requestBody)
                 val body = json.toRequestBody("application/json".toMediaType())
 
-                // Use the correct, working model URL
                 val url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${BuildConfig.GEMINI_API_KEY}"
-
-                Log.d(TAG, "--- askQuestion ---")
-                Log.d(TAG, "Request URL: $url")
-                Log.d(TAG, "Request JSON: $json")
 
                 val request = Request.Builder()
                     .url(url)
@@ -130,65 +133,28 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
                     .build()
 
                 val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() // Read body once
+                val responseBody = response.body?.string()
 
                 if (!response.isSuccessful) {
-                    Log.e(TAG, "Response Error: $responseBody")
                     throw Exception("HTTP ${response.code}: ${response.message} \n $responseBody")
                 }
 
-                Log.d(TAG, "Response Success: $responseBody")
                 val geminiResponse = gson.fromJson(responseBody, GeminiResponse::class.java)
                 val aiText = geminiResponse.candidates?.firstOrNull()
                     ?.content?.parts?.firstOrNull()?.text
                     ?: "No response from AI."
 
-                _uiState.value = _uiState.value + ChatMessage(aiText, isFromUser = false)
+                saveMessageToDb(aiText, false)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value + ChatMessage("uh oh...Its not you, its us. Please try again later.", isFromUser = false)
+                val errorMessage = "uh oh...Its not you, its us. Please try again later."
+                saveMessageToDb(errorMessage, false)
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    // ... (listAvailableModels is unchanged) ...
-    fun listAvailableModels() {
-        _uiState.value = _uiState.value + ChatMessage("Checking available models... see Logcat.", false)
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val url = "https://generativelanguage.googleapis.com/v1/models?key=${BuildConfig.GEMINI_API_KEY}"
-
-                Log.d(TAG, "--- listAvailableModels ---")
-                Log.d(TAG, "Request URL: $url")
-
-                val request = Request.Builder()
-                    .url(url)
-                    .get()
-                    .build()
-
-                val response = client.newCall(request).execute()
-                val responseBody = response.body?.string()
-
-                if (!response.isSuccessful) {
-                    Log.e(TAG, "listModels Error: $responseBody")
-                    // Show the error in the chat
-                    _uiState.value = _uiState.value + ChatMessage("Error listing models: ${response.message}\n${responseBody}", false)
-                } else {
-                    Log.i(TAG, "--- AVAILABLE MODELS ---")
-                    Log.i(TAG, responseBody ?: "Empty response")
-                    Log.i(TAG, "--- END OF MODELS ---")
-                    _uiState.value = _uiState.value + ChatMessage("Model list logged to Logcat.", false)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "listModels failed", e)
-                _uiState.value = _uiState.value + ChatMessage("Error: ${e.message}", false)
-            }
-        }
-    }
-
     private suspend fun buildContextPrompt(question: String): String {
-        // ... (This function is unchanged)
         val oneMonthAgo = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)
         val expenses = expenseDao.getExpensesAfter(oneMonthAgo)
         val incomes = incomeDao.getAllIncomesAfter(oneMonthAgo)
