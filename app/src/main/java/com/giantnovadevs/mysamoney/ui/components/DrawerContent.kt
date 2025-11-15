@@ -23,6 +23,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.collectAsState
+import com.giantnovadevs.mysamoney.BuildConfig
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 
 @Composable
@@ -147,13 +148,14 @@ fun DrawerItem(
 
 @Composable
 fun DrawerFooter() {
+    val appVersion = BuildConfig.VERSION_NAME
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
     ) {
         Divider(modifier = Modifier.padding(bottom = 16.dp))
-        Text("Version 1.2.0", style = MaterialTheme.typography.bodySmall)
+        Text("Version $appVersion", style = MaterialTheme.typography.bodySmall)
         Text("Made with ❤️ in India", style = MaterialTheme.typography.bodySmall)
     }
 }
