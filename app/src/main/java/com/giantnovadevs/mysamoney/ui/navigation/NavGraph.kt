@@ -15,7 +15,6 @@ import com.giantnovadevs.mysamoney.viewmodel.BackupViewModel
 import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.SettingsViewModel
-import androidx.navigation.navArgument
 
 @Composable
 fun AppNavGraph(
@@ -29,7 +28,9 @@ fun AppNavGraph(
     val backupViewModel: BackupViewModel = viewModel()
     val financialCoachViewModel: FinancialCoachViewModel = viewModel()
     NavHost(navController = navController, startDestination = "home") {
-        composable("home") { HomeScreen(navController, onMenuClick = onMenuClick) }
+        composable("home") {
+            HomeScreen(navController, onMenuClick, financialCoachViewModel)
+        }
         composable(
             route = "expense_entry?categoryId={categoryId}&expenseId={expenseId}",
             arguments = listOf(

@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
@@ -49,20 +50,26 @@ import java.time.format.DateTimeFormatter
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.lerp
+import com.giantnovadevs.mysamoney.data.RecurringExpense
+import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
+import com.giantnovadevs.mysamoney.viewmodel.RecurringExpenseViewModel
 import com.github.mikephil.charting.utils.ColorTemplate
 import com.github.mikephil.charting.formatter.ValueFormatter
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    financialCoachViewModel: FinancialCoachViewModel
 ) {
     // --- 1. Get All ViewModels & Data ---
     val expenseVm: ExpenseViewModel = viewModel()
     val catVm: CategoryViewModel = viewModel()
-    val incomeVm: IncomeViewModel = viewModel() // <-- New
-
+    val incomeVm: IncomeViewModel = viewModel()
+    val recurringVm: RecurringExpenseViewModel = viewModel()
+    val upcomingBills by recurringVm.recurringExpenses.collectAsState()
     val expenses by expenseVm.expenses.collectAsState()
     val categories by catVm.categories.collectAsState()
     val dailySpending by expenseVm.dailySpendingLast7Days.collectAsState()
@@ -71,6 +78,13 @@ fun HomeScreen(
     val monthlyIncome by incomeVm.monthlyTotalIncome.collectAsState()
     val monthlyExpense by expenseVm.monthlyTotal.collectAsState()
     val monthlySurplus = monthlyIncome - monthlyExpense
+
+    val insight by financialCoachViewModel.dashboardInsight.collectAsState()
+    val isInsightLoading by financialCoachViewModel.isLoading.collectAsState()
+
+    LaunchedEffect(Unit) {
+        financialCoachViewModel.getDashboardInsight()
+    }
 
     // Chart colors from theme
     val chartColors = listOf(
@@ -150,6 +164,17 @@ fun HomeScreen(
             contentPadding = PaddingValues(16.dp)
         ) {
 
+            item {
+                InsightCard(
+                    insight = insight,
+                    isLoading = isInsightLoading,
+                    onClick = {
+                        // If it fails, tap to retry
+                        financialCoachViewModel.getDashboardInsight()
+                    }
+                )
+            }
+
             // --- Item 1: Monthly Surplus Card ---
             item {
                 MonthlySurplusCard(
@@ -167,6 +192,16 @@ fun HomeScreen(
                         navController.navigate("add?categoryId=$categoryId")
                     }
                 )
+            }
+
+            if (upcomingBills.isNotEmpty()) {
+                item {
+                    UpcomingBillsCard(
+                        // Take the next 3 soonest bills
+                        upcomingBills = upcomingBills.take(3),
+                        categories = categories
+                    )
+                }
             }
 
             item {
@@ -207,6 +242,133 @@ fun HomeScreen(
     }
 }
 
+
+@Composable
+private fun InsightCard(
+    insight: String?,
+    isLoading: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick, enabled = !isLoading), // Click to retry
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            // Use a tinted color to make it stand out
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Filled.AutoAwesome,
+                contentDescription = "AI Insight",
+                tint = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Spacer(Modifier.width(12.dp))
+
+            if (isLoading) {
+                Text(
+                    "Generating your daily insight...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            } else {
+                Text(
+                    text = insight ?: "Tap to get your first insight!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpcomingBillsCard(
+    upcomingBills: List<RecurringExpense>,
+    categories: List<Category>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                text = "Upcoming Bills",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            // A column for the bill rows
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                upcomingBills.forEach { bill ->
+                    val categoryName = categories.find { it.id == bill.categoryId }?.name ?: "Unknown"
+                    UpcomingBillRow(bill = bill, categoryName = categoryName)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A helper composable for a single bill row.
+ */
+@Composable
+private fun UpcomingBillRow(bill: RecurringExpense, categoryName: String) {
+    val decimalFormat = remember { DecimalFormat("₹#,##0.00") }
+
+    // --- Calculate "Due in X days" ---
+    val todayMillis = System.currentTimeMillis()
+    val diffMillis = bill.nextDueDate - todayMillis
+    val daysRemaining = TimeUnit.MILLISECONDS.toDays(diffMillis)
+
+    val dueDateText = when {
+        daysRemaining < 0 -> "Overdue"
+        daysRemaining == 0L -> "Due today"
+        daysRemaining == 1L -> "Due in 1 day"
+        else -> "Due in $daysRemaining days"
+    }
+    val dateColor = if (daysRemaining < 3) ExpenseColor else MaterialTheme.colorScheme.onSurfaceVariant
+    // ---
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Left side: Name and Date
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Filled.Notifications, // Or Icons.Filled.Refresh
+                contentDescription = "Upcoming Bill",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = bill.note ?: categoryName,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = dueDateText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = dateColor
+                )
+            }
+        }
+
+        // Right side: Amount
+        Text(
+            text = decimalFormat.format(bill.amount),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
 @Composable
 private fun ChartLazyRow(
     expenses: List<Expense>,

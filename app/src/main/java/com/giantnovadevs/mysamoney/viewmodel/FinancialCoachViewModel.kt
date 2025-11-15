@@ -60,6 +60,10 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+
+    private val _dashboardInsight = MutableStateFlow<String?>(null)
+    val dashboardInsight: StateFlow<String?> = _dashboardInsight.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -202,5 +206,55 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     private fun formatDate(timestamp: Long): String {
         val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
         return sdf.format(Date(timestamp))
+    }
+
+    fun getDashboardInsight() {
+        // Don't run if we're already loading or have an insight
+        if (_isLoading.value || _dashboardInsight.value != null) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            _isLoading.value = true // Use the main loading spinner
+            try {
+                // 1. Build the data context
+                val dataContext = buildContextPrompt(question = "") // Pass empty question
+
+                // 2. Create a specific, one-sentence prompt
+                val insightPrompt = """
+                    You are "Mysa Money Coach." Based *only* on the data below, provide one single, interesting, and concise insight for the user's dashboard.
+                    - Be friendly and start with a greeting (e.g., "Hi there!").
+                    - Keep it to one or two short sentences.
+                    - If there is no data, just say: "Start logging your expenses and incomes to get personalized insights!"
+                    - Do not ask a question. Just provide the insight.
+
+                    Data:
+                    $dataContext
+                """.trimIndent()
+
+                // 3. Build the request
+                val requestBody = GeminiRequest(contents = listOf(Content(parts = listOf(Part(insightPrompt)))))
+                val json = gson.toJson(requestBody)
+                val body = json.toRequestBody("application/json".toMediaType())
+                val url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${BuildConfig.GEMINI_API_KEY}"
+
+                val request = Request.Builder().url(url).post(body).build()
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+
+                if (!response.isSuccessful) {
+                    throw Exception("HTTP ${response.code}: ${response.message} \n $responseBody")
+                }
+
+                val geminiResponse = gson.fromJson(responseBody, GeminiResponse::class.java)
+                val aiText = geminiResponse.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+
+                // 4. Set the state
+                _dashboardInsight.value = aiText ?: "Tap to get your first insight!"
+
+            } catch (e: Exception) {
+                _dashboardInsight.value = "Couldn't load insight. Tap to retry."
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 }
