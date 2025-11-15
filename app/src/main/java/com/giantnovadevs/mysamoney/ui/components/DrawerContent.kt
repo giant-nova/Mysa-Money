@@ -26,7 +26,7 @@ import androidx.compose.runtime.collectAsState
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 
 @Composable
-fun AppDrawer(navController: NavController, onClose: () -> Unit, proViewModel: ProViewModel,) {
+fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose: () -> Unit) {
     // ✅ Get the current route to show the selected item
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
