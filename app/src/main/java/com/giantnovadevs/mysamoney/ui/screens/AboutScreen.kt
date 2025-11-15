@@ -3,8 +3,10 @@ package com.giantnovadevs.mysamoney.ui.screens
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Star
@@ -27,13 +29,22 @@ fun AboutScreen(
     val context = LocalContext.current
     val appVersion = BuildConfig.VERSION_NAME // Get version from build.gradle
 
+    val navToHome: () -> Unit = {
+        navController.navigate("home") {
+            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("About Mysa Money") },
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Open Menu")
+                    IconButton(onClick = { navToHome() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Go Back"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

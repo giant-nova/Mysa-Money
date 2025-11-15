@@ -1,9 +1,11 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -82,13 +84,22 @@ fun AddRecurringExpenseScreen(
         }
     }
 
+    val navToHome: () -> Unit = {
+        navController.navigate("home") {
+            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (isEditMode) "Edit Subscription" else "Add Subscription") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Go Back")
+                    IconButton(onClick = { navToHome() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Go Back"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

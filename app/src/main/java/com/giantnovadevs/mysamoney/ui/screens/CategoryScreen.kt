@@ -1,5 +1,6 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -39,13 +41,22 @@ fun CategoryScreen(
     var categoryToEdit by remember { mutableStateOf<Category?>(null) }
 
 
+    val navToHome: () -> Unit = {
+        navController.navigate("home") {
+            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Categories") },
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Open Menu")
+                    IconButton(onClick = { navToHome() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Go Back"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

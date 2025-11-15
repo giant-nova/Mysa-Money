@@ -1,5 +1,6 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,6 +37,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.ui.text.style.TextAlign
 
@@ -51,13 +53,22 @@ fun RecurringExpenseScreen(
     val recurringExpenses by recurringVm.recurringExpenses.collectAsState()
     val categories by catVm.categories.collectAsState()
 
+    val navToHome: () -> Unit = {
+        navController.navigate("home") {
+            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Subscriptions & Bills") },
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Open Menu")
+                    IconButton(onClick = { navToHome() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Go Back"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

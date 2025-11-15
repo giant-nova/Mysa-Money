@@ -52,8 +52,10 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.core.content.ContextCompat
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,6 +120,13 @@ fun ExpenseListScreen(
             }
         }
     }
+
+    val navToHome: () -> Unit = {
+        navController.navigate("home") {
+            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -139,8 +148,11 @@ fun ExpenseListScreen(
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Open Menu")
+                    IconButton(onClick = { navToHome() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Go Back"
+                        )
                     }
                 }
             )
@@ -321,15 +333,10 @@ private fun BannerAd(modifier: Modifier = Modifier) {
                 adListener = object : AdListener() {
                     override fun onAdFailedToLoad(adError: LoadAdError) {
                         super.onAdFailedToLoad(adError)
-                        // Log the error
-                        Log.e("AdMobBanner", "Ad failed to load: ${adError.message}")
-                        Log.e("AdMobBanner", "Error Code: ${adError.code}")
-                        Log.e("AdMobBanner", "Error Domain: ${adError.domain}")
                     }
 
                     override fun onAdLoaded() {
                         super.onAdLoaded()
-                        Log.i("AdMobBanner", "Ad loaded successfully!")
                     }
                 }
 
