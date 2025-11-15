@@ -1,31 +1,70 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# =================================
+#    Mysa Money ProGuard Rules
+# =================================
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# --- Base Android & Kotlin ---
+-keep class kotlin.coroutines.jvm.internal.BaseContinuationImpl { *; }
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn kotlinx.coroutines.**
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# --- Room (Database) ---
+# This keeps all your @Entity, @Dao, etc. classes
+-keep class androidx.room.** { *; }
+-dontwarn androidx.room.**
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# --- Data Models (Entities & API Models) ---
+# This stops R8 from renaming your data classes, which would break
+# Room, GSON (Gemini), and the Billing library.
+-keep class com.giantnovadevs.mysamoney.data.** { *; }
+-keep class com.giantnovadevs.mysamoney.viewmodel.GeminiRequest { *; }
+-keep class com.giantnovadevs.mysamoney.viewmodel.Content { *; }
+-keep class com.giantnovadevs.mysamoney.viewmodel.Part { *; }
+-keep class com.giantnovadevs.mysamoney.viewmodel.GeminiResponse { *; }
+-keep class com.giantnovadevs.mysamoney.viewmodel.Candidate { *; }
+-keep class com.giantnovadevs.mysamoney.viewmodel.ChatMessage { *; }
 
-# ProGuard rules for Google Drive API
+# --- Google Gemini / GSON (AI Coach) ---
+# Keeps the @SerializedName annotations used by GSON
+-keepattributes *Annotation*
+-keep class com.google.gson.annotations.** { *; }
+-keep class com.google.ai.client.generativeai.** { *; }
+
+# --- Google Drive API (Backup/Restore) ---
+# These are the rules to prevent the GSON/HTTP client from crashing
 -keep class com.google.api.client.util.Data { *; }
 -keep class com.google.api.services.drive.** { *; }
 -keepclassmembers class com.google.api.services.drive.model.** { *; }
-
-# Keep GSON fields
 -keepclassmembers class * {
   @com.google.api.client.util.Key <fields>;
 }
+
+# --- Google Sign-In & Auth ---
+-keep class com.google.android.gms.auth.** { *; }
+-keep class com.google.api.client.googleapis.extensions.android.gms.auth.** { *; }
+
+# --- Google Play Billing (In-App Purchase) ---
+-keep class com.android.vending.billing.** { *; }
+-dontwarn com.android.vending.billing.**
+
+# --- Google AdMob (Ads) ---
+-keep class com.google.android.gms.ads.** { *; }
+-keep public class com.google.android.gms.ads.internal.ClientApi { *; }
+
+# --- iText7 (PDF Export) ---
+# Keeps the PDF library's core classes
+-keep class com.itextpdf.** { *; }
+-dontwarn com.itextpdf.**
+
+# --- MPAndroidChart (Charts) ---
+# Keeps the chart library's classes
+-keep class com.github.mikephil.charting.** { *; }
+
+# --- OkHttp (Used by Gemini & Google APIs) ---
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn org.conscrypt.**
+
+# --- Google Guava (Pulled in by Google APIs) ---
+# This rule is critical for minSdk 24
+-keep class com.google.common.** { *; }
+-dontwarn com.google.common.**
