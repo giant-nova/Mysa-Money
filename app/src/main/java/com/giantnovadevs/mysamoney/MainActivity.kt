@@ -154,7 +154,7 @@ private fun MediumRectangleAd(modifier: Modifier = Modifier) {
             AdView(context).apply {
                 setAdSize(AdSize.MEDIUM_RECTANGLE)
                 // Use the standard Test Ad Unit ID
-                adUnitId = "ca-app-pub-3940256099942544/6300978111"
+                adUnitId = "ca-app-pub-3940256099942544/9214589741"
                 loadAd(AdRequest.Builder().build())
             }
         }
