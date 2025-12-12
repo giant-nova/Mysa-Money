@@ -68,3 +68,8 @@
 # This rule is critical for minSdk 24
 -keep class com.google.common.** { *; }
 -dontwarn com.google.common.**
+
+# --- AutoValue / JavaPoet (from Google API libraries) ---
+-dontwarn javax.lang.model.**
+-dontwarn autovalue.shaded.com.squareup.javapoet.**
+-dontwarn com.google.auto.value.processor.**

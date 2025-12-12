@@ -9,24 +9,24 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
 import com.google.api.services.drive.DriveScopes
-import com.giantnovadevs.mysamoney.R // Import your R file
+import com.giantnovadevs.mysamoney.R
 import kotlinx.coroutines.tasks.await
 
 class GoogleAuthManager(context: Context) {
 
     private val appContext = context.applicationContext
 
-    // 1. Configure Google Sign-In
+    // Configure Google Sign-In
     private val gso: GoogleSignInOptions =
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             // Request the Web Client ID you stored in strings.xml
             .requestIdToken(context.getString(R.string.your_web_client_id))
             .requestEmail() // Get the user's email to display
-            // ✅ This is the key: Request permission ONLY for the appDataFolder
+            // This is the key: Request permission ONLY for the appDataFolder
             .requestScopes(Scope(DriveScopes.DRIVE_APPDATA))
             .build()
 
-    // 2. Build the client
+    // Build the client
     private val googleSignInClient = GoogleSignIn.getClient(appContext, gso)
 
     /**

@@ -20,7 +20,7 @@ class GoogleDriveManager(
         const val BACKUP_FILE_NAME = "mysamoney.db"
     }
 
-    // 1. Create the authorized Drive service client
+    // Create the authorized Drive service client
     private val driveService: Drive by lazy {
         // Use the account to get the credentials
         val credential = GoogleAccountCredential.usingOAuth2(
@@ -48,7 +48,7 @@ class GoogleDriveManager(
         val query = "name = '$BACKUP_FILE_NAME'"
         val result = driveService.files().list()
             .setQ(query)
-            .setSpaces("appDataFolder") // <-- Search *only* the hidden folder
+            .setSpaces("appDataFolder") // Search only the hidden folder
             .setFields("files(id, name)")
             .execute()
 
@@ -107,9 +107,6 @@ class GoogleDriveManager(
                 ?: throw Exception("No backup file found in Google Drive")
 
             val localDbFile = context.getDatabasePath(BACKUP_FILE_NAME)
-
-            // Close the database before trying to replace it
-            // (We'll add this to the ViewModel)
 
             // Download the file from Drive
             FileOutputStream(localDbFile).use { outputStream ->

@@ -65,15 +65,15 @@ fun SettingsScreen(
 
     // Local state to track the last operation for success/error messaging
     var lastOperation by remember { mutableStateOf<String?>(null) }
-    val isPro by proViewModel.isProUser.collectAsState() // ✅ Get Pro status
-    val proPrice by proViewModel.proProductPrice.collectAsState() // ✅ Get Pro price
+    val isPro by proViewModel.isProUser.collectAsState() // Get Pro status
+    val proPrice by proViewModel.proProductPrice.collectAsState() // Get Pro price
 
-    // --- 1. Flaw Fix: Tell the BackupViewModel who is signed in ---
+    // Tell the BackupViewModel who is signed in
     LaunchedEffect(account) {
         backupViewModel.setAccount(account)
     }
 
-    // --- 2. Flaw Fix: Correct Backup/Restore State Handling (The major fix) ---
+    // Backup/Restore State Handling
     LaunchedEffect(backupState) {
         when (backupState) {
             BackupRestoreState.SUCCESS -> {
@@ -90,7 +90,7 @@ fun SettingsScreen(
                     )
                 }
 
-                // CRITICAL FLAW FIX: This must ONLY run after a successful RESTORE.
+                // This must ONLY run after a successful RESTORE.
                 if (lastOperation == "restore") {
                     delay(2500L) // Wait for snackbar to show
                     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -163,7 +163,7 @@ fun SettingsScreen(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) } // ✅ Added Snackbar Host
+        snackbarHost = { SnackbarHost(snackbarHostState) } // Added Snackbar Host
     ) { padding ->
         Column(
             modifier = Modifier
@@ -171,7 +171,7 @@ fun SettingsScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // --- Theme Selector ---
+            // Theme Selector
             Text(
                 "Select Theme",
                 style = MaterialTheme.typography.titleMedium,
@@ -199,7 +199,7 @@ fun SettingsScreen(
                     ThemeColorButton(
                         theme = theme,
                         isSelected = theme.palette == currentTheme,
-                        isLocked = !isPro, // ✅ Lock if user is NOT Pro
+                        isLocked = !isPro, // Lock if user is NOT Pro
                         onClick = {
                             if (isPro) {
                                 viewModel.saveTheme(theme)
@@ -214,7 +214,7 @@ fun SettingsScreen(
 
             Divider(modifier = Modifier.padding(vertical = 16.dp))
 
-            // --- Backup & Sync Section ---
+            // Backup & Sync Section
             Text(
                 "Backup & Sync",
                 style = MaterialTheme.typography.titleMedium,
@@ -257,7 +257,7 @@ fun SettingsScreen(
             } else {
                 // User is SIGNED IN
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // "Signed in as" text (unchanged)
+                    // "Signed in as" text
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -273,7 +273,6 @@ fun SettingsScreen(
                         }
                     }
 
-                    // New Button Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -318,7 +317,7 @@ fun SettingsScreen(
             }
             Divider(modifier = Modifier.padding(vertical = 16.dp))
 
-            // Pro Upgrade Section ---
+            // Pro Upgrade Section
             Text(
                 "Mysa Money Pro",
                 style = MaterialTheme.typography.titleMedium,
@@ -331,25 +330,6 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
-
-                Button(
-                    onClick = {
-                        proViewModel.consumeTestPurchase {
-                            // This will force a restart to clear the state
-                            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                            intent!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                            context.startActivity(intent)
-                            exitProcess(0)
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("DEBUG: Consume Pro Purchase (to re-test)")
-                }
-
             } else {
                 // User is not Pro
                 Button(
