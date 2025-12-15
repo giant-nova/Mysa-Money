@@ -49,16 +49,6 @@ class ProViewModel(app: Application) : AndroidViewModel(app) {
         billingManager.launchPurchaseFlow(activity)
     }
 
-    fun consumeTestPurchase(onConsumed: () -> Unit) {
-        billingManager.consumeTestPurchase {
-            // After consuming, we also clear our saved preference
-            viewModelScope.launch {
-                preferencesManager.saveProStatus(false)
-                onConsumed()
-            }
-        }
-    }
-
     val freeScansRemaining = preferencesManager.freeScansRemaining
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 5)
 
