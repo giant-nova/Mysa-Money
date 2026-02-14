@@ -3,16 +3,22 @@ package com.giantnovadevs.mysamoney.ui.screens
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.activity.compose.BackHandler
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -24,6 +30,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -38,10 +45,17 @@ import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ExpenseViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Date
+
+// --- Theme Colors ---
+private val AppBackground = Color(0xFFF6F7F9)
+private val CardBackground = Color.White
+private val CardBorder = Color(0xFFEBEBEB)
+private val TextPrimary = Color(0xFF56595F)
+private val TextSecondary = Color(0xFF72777F)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,50 +68,41 @@ fun AddExpenseScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val textRecognizer = remember { TextRecognitionHelper(context) }
+    val focusManager = LocalFocusManager.current
 
     val expVm: ExpenseViewModel = viewModel()
     val catVm: CategoryViewModel = viewModel()
     val categories by catVm.categories.collectAsState()
     val isEditMode = expenseId != null
 
+    // Form State
     var amount by remember { mutableStateOf("") }
     var selectedCat by remember { mutableStateOf<Category?>(null) }
     var note by remember { mutableStateOf("") }
-    var categoriesExpanded by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var showDatePicker by remember { mutableStateOf(false) }
 
-    // --- ✅ NEW STATE for "Add Category" Dialog ---
+    // UI State
+    var categoriesExpanded by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
 
+    // Pro Features
     val isPro by proViewModel.isProUser.collectAsState()
     val freeScans by proViewModel.freeScansRemaining.collectAsState()
 
     val isFormValid by remember(amount, selectedCat) {
-        mutableStateOf(
-            (amount.toDoubleOrNull() ?: 0.0) > 0 && selectedCat != null
-        )
+        mutableStateOf((amount.toDoubleOrNull() ?: 0.0) > 0 && selectedCat != null)
     }
 
-    // --- Permission State ---
+    // --- Permissions & Camera ---
     var hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
-        )
+        mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         hasCameraPermission = isGranted
-        if (isGranted) {
-            navController.navigate("camera_screen")
-        }
+        if (isGranted) navController.navigate("camera_screen")
     }
 
-    // --- Camera Result Listener ---
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
     val imageUriFlow = savedStateHandle?.getStateFlow<Uri?>("image_uri", null)
     val imageUri by imageUriFlow?.collectAsState() ?: remember { mutableStateOf<Uri?>(null) }
@@ -105,232 +110,173 @@ fun AddExpenseScreen(
     LaunchedEffect(imageUri) {
         val uri = imageUri
         if (uri != null) {
-            if (!isPro) {
-                proViewModel.useFreeScan()
-            }
+            if (!isPro) proViewModel.useFreeScan()
             scope.launch {
                 val parsedAmount = textRecognizer.analyze(uri)
-                if (parsedAmount != null) {
-                    amount = parsedAmount
-                }
+                if (parsedAmount != null) amount = parsedAmount
                 savedStateHandle?.set("image_uri", null)
             }
         }
     }
 
-    // --- Category Selection Logic ---
+    // --- Data Initialization ---
     LaunchedEffect(categories, categoryId) {
         if (categories.isNotEmpty()) {
-            val preSelected = categoryId?.toIntOrNull()?.let { id ->
-                categories.find { it.id == id }
-            }
-            if (preSelected != null) {
-                selectedCat = preSelected
-            } else if (selectedCat == null) {
-                selectedCat = categories.first()
-            }
+            val preSelected = categoryId?.toIntOrNull()?.let { id -> categories.find { it.id == id } }
+            if (preSelected != null) selectedCat = preSelected
+            else if (selectedCat == null) selectedCat = categories.first()
         }
     }
 
-
     var expenseToEdit by remember { mutableStateOf<Expense?>(null) }
-
-    // This LaunchedEffect will run ONCE if we are in edit mode
     LaunchedEffect(expenseId, categories) {
         if (isEditMode) {
             val id = expenseId?.toIntOrNull() ?: -1
             expVm.getExpenseById(id).collect { expense ->
                 if (expense != null) {
-                    expenseToEdit = expense // Save the expense
+                    expenseToEdit = expense
                     amount = String.format("%.2f", expense.amount).removeSuffix(".00")
                     note = expense.note ?: ""
-                    // Find and set the category
                     selectedCat = categories.find { it.id == expense.categoryId }
-                    // Find and set the date
                     selectedDate = LocalDate.ofEpochDay(expense.date / (1000 * 60 * 60 * 24))
                 }
             }
         }
     }
 
-    val navToHome: () -> Unit = {
-        navController.navigate("home") {
-            popUpTo(navController.graph.startDestinationId) { inclusive = true }
-        }
-    }
-
-    // --- Scaffold ---
     Scaffold(
+        containerColor = AppBackground,
         topBar = {
-            TopAppBar(
-                title = { Text(if (isEditMode) "Edit Expense" else "Add Expense") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        if (isEditMode) "Edit Expense" else "Add Expense",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = { navToHome() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go Back"
-                        )
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = AppBackground,
+                    titleContentColor = TextPrimary
                 )
             )
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
+            // --- Form Container (White Card) ---
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                border = BorderStroke(1.dp, CardBorder),
+                elevation = CardDefaults.cardElevation(0.dp)
             ) {
-                AnimatedVisibility(
-                    visible = true,
-                    enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn()
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-
-                        // --- 1. Amount Field ---
-                        OutlinedTextField(
-                            value = amount,
-                            onValueChange = {
-                                if (it.matches(Regex("^\\d*\\.?\\d*\$"))) {
-                                    amount = it
-                                }
-                            },
-                            label = { Text("Amount") },
-                            leadingIcon = { Icon(Icons.Filled.MonetizationOn, "Amount") },
-                            prefix = { Text("₹ ") },
-                            textStyle = MaterialTheme.typography.titleLarge,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal,
-                                imeAction = ImeAction.Next
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            trailingIcon = {
-                                val isLocked = !isPro && freeScans == 0
-                                if (isLocked) {
-                                    val tooltipState = rememberTooltipState()
-                                    TooltipBox(
-                                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-                                        tooltip = {
-                                            PlainTooltip {
-                                                Text("Out of scans? Upgrade to Pro for unlimited scans.")
-                                            }
-                                        },
-                                        state = tooltipState
-                                    ) {
-                                        Icon(
-                                            Icons.Filled.Lock,
-                                            contentDescription = "Scan locked, upgrade to Pro",
-                                            modifier = Modifier.blur(4.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                } else {
-                                    IconButton(onClick = {
-                                        if (hasCameraPermission) {
-                                            navController.navigate("camera_screen")
-                                        } else {
-                                            permissionLauncher.launch(Manifest.permission.CAMERA)
-                                        }
-                                    }) {
-                                        Icon(Icons.Filled.CameraAlt, "Scan Receipt")
-                                    }
+                    // 1. Amount Input
+                    CleanOutlinedTextField(
+                        value = amount,
+                        onValueChange = { if (it.matches(Regex("^\\d*\\.?\\d*\$"))) amount = it },
+                        label = "Amount",
+                        icon = Icons.Filled.MonetizationOn,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        trailingIcon = {
+                            val isLocked = !isPro && freeScans == 0
+                            if (isLocked) {
+                                Icon(
+                                    Icons.Filled.Lock,
+                                    contentDescription = "Locked",
+                                    tint = TextSecondary.copy(alpha = 0.5f)
+                                )
+                            } else {
+                                IconButton(onClick = {
+                                    if (hasCameraPermission) navController.navigate("camera_screen")
+                                    else permissionLauncher.launch(Manifest.permission.CAMERA)
+                                }) {
+                                    Icon(Icons.Filled.CameraAlt, "Scan", tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
-                        )
+                        },
+                        prefix = { Text("₹ ", style = MaterialTheme.typography.bodyLarge, color = TextPrimary) }
+                    )
 
-                        // --- 2. Category Dropdown ---
-                        ExposedDropdownMenuBox(
+                    // 2. Category Dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = categoriesExpanded,
+                        onExpandedChange = { categoriesExpanded = !categoriesExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        CleanOutlinedTextField(
+                            value = selectedCat?.name ?: "Select Category",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = "Category",
+                            icon = Icons.Filled.Category,
+                            modifier = Modifier.menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoriesExpanded) }
+                        )
+                        ExposedDropdownMenu(
                             expanded = categoriesExpanded,
-                            onExpandedChange = { categoriesExpanded = !categoriesExpanded },
-                            modifier = Modifier.fillMaxWidth()
+                            onDismissRequest = { categoriesExpanded = false },
+                            modifier = Modifier.background(CardBackground)
                         ) {
-                            OutlinedTextField(
-                                value = selectedCat?.name ?: "Select Category",
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Category") },
-                                leadingIcon = { Icon(Icons.Filled.Category, "Category") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoriesExpanded) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = categoriesExpanded,
-                                onDismissRequest = { categoriesExpanded = false }
-                            ) {
-                                categories.forEach { category ->
-                                    DropdownMenuItem(
-                                        text = { Text(category.name) },
-                                        onClick = {
-                                            selectedCat = category
-                                            categoriesExpanded = false
-                                        }
-                                    )
-                                }
-                                // --- ✅ ITEM #1 FIX ---
-                                Divider()
+                            categories.forEach { category ->
                                 DropdownMenuItem(
-                                    text = { Text("+ Add New Category") },
+                                    text = { Text(category.name, color = TextPrimary) },
                                     onClick = {
-                                        showAddCategoryDialog = true
+                                        selectedCat = category
                                         categoriesExpanded = false
                                     }
                                 )
-                                // --- END OF FIX ---
                             }
-                        }
-
-                        // --- 3. Date Picker (Item #2) ---
-                        // This already exists and works!
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showDatePicker = true }
-                        ) {
-                            OutlinedTextField(
-                                value = selectedDate.format(DateTimeFormatter.ofPattern("dd MMM, yyyy")),
-                                onValueChange = {},
-                                label = { Text("Date") },
-                                leadingIcon = { Icon(Icons.Filled.DateRange, "Date") },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = false,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                    disabledContainerColor = Color.Transparent,
-                                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            HorizontalDivider(color = CardBorder)
+                            DropdownMenuItem(
+                                text = { Text("+ Add New Category", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
+                                onClick = {
+                                    showAddCategoryDialog = true
+                                    categoriesExpanded = false
+                                }
                             )
                         }
+                    }
 
-                        // --- 4. Note Field ---
-                        OutlinedTextField(
-                            value = note,
-                            onValueChange = { note = it },
-                            label = { Text("Note (optional)") },
-                            leadingIcon = { Icon(Icons.Filled.Notes, "Note") },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Done,
-                                capitalization = KeyboardCapitalization.Sentences
-                            ),
-                            modifier = Modifier.fillMaxWidth()
+                    // 3. Date Picker
+                    Box(modifier = Modifier.clickable { showDatePicker = true }) {
+                        CleanOutlinedTextField(
+                            value = selectedDate.format(DateTimeFormatter.ofPattern("dd MMM, yyyy")),
+                            onValueChange = {},
+                            label = "Date",
+                            icon = Icons.Filled.DateRange,
+                            enabled = false // Click handled by Box
                         )
                     }
+
+                    // 4. Note Input
+                    CleanOutlinedTextField(
+                        value = note,
+                        onValueChange = { note = it },
+                        label = "Note (Optional)",
+                        icon = Icons.Filled.Notes,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                    )
                 }
             }
 
@@ -340,107 +286,132 @@ fun AddExpenseScreen(
                     val amt = amount.toDoubleOrNull()!!
                     val dateInMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-                    // ✅ THIS IS THE NEW LOGIC
-                    if (isEditMode) {
-                        // We are UPDATING an existing expense
-                        val updatedExpense = expenseToEdit!!.copy(
-                            amount = amt,
-                            categoryId = selectedCat!!.id,
-                            note = if (note.isBlank()) null else note,
-                            date = dateInMillis
-                        )
-                        expVm.updateExpense(updatedExpense)
-                    } else {
-                        // We are ADDING a new expense
-                        expVm.addExpense(
-                            Expense(
-                                amount = amt,
-                                categoryId = selectedCat!!.id,
-                                note = if (note.isBlank()) null else note,
-                                date = dateInMillis
-                            )
-                        )
-                    }
+                    val expenseData = Expense(
+                        id = if (isEditMode) expenseToEdit!!.id else 0, // 0 is ignored by Room auto-generate
+                        amount = amt,
+                        categoryId = selectedCat!!.id,
+                        note = if (note.isBlank()) null else note,
+                        date = dateInMillis
+                    )
+
+                    if (isEditMode) expVm.updateExpense(expenseData)
+                    else expVm.addExpense(expenseData)
+
                     navController.popBackStack()
                 },
                 enabled = isFormValid,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
-                    .align(Alignment.BottomCenter)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
             ) {
                 Text(
-                    text = if (isEditMode) "Save Changes" else "Save",
-                    style = MaterialTheme.typography.titleMedium
+                    text = if (isEditMode) "Save Changes" else "Save Expense",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
                 )
             }
         }
     }
 
-    // --- ✅ ITEM #1 FIX: Add Category Dialog ---
+    // Dialogs
     if (showAddCategoryDialog) {
-        AddCategoryDialog(
-            catVm = catVm,
-            onDismiss = { showAddCategoryDialog = false }
-        )
+        AddCategoryDialog(catVm = catVm, onDismiss = { showAddCategoryDialog = false })
     }
 
-    // --- Date Picker Dialog (Unchanged) ---
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault())
-                .toInstant()
-                .toEpochMilli()
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            selectedDate = java.time.Instant.ofEpochMilli(millis)
-                                .atZone(ZoneId.systemDefault())
-                                .toLocalDate()
-                        }
-                        showDatePicker = false
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        selectedDate = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
                     }
-                ) { Text("OK") }
+                    showDatePicker = false
+                }) { Text("OK") }
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-            }
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } },
+            colors = DatePickerDefaults.colors(containerColor = CardBackground)
         ) {
             DatePicker(state = datePickerState)
         }
     }
 }
 
-// --- ✅ ITEM #1 FIX: New Composable for the Dialog ---
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * A Custom Styled OutlinedTextField that fits the "Clean Grey-White" theme.
+ */
+@Composable
+fun CleanOutlinedTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    readOnly: Boolean = false,
+    enabled: Boolean = true,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    prefix: @Composable (() -> Unit)? = null,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        leadingIcon = { Icon(icon, contentDescription = null, tint = TextSecondary) },
+        trailingIcon = trailingIcon,
+        prefix = prefix,
+        readOnly = readOnly,
+        enabled = enabled,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(color = TextPrimary),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            disabledContainerColor = Color.White,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = CardBorder, // Subtle border
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = TextSecondary,
+            disabledBorderColor = CardBorder,
+            disabledTextColor = TextPrimary,
+            disabledLabelColor = TextSecondary
+        ),
+        modifier = modifier.fillMaxWidth(),
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions
+    )
+}
+
 @Composable
 private fun AddCategoryDialog(
     catVm: CategoryViewModel,
     onDismiss: () -> Unit
 ) {
     var newCategoryName by remember { mutableStateOf("") }
-    val focusManager = LocalFocusManager.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add New Category") },
+        containerColor = CardBackground,
+        titleContentColor = TextPrimary,
+        textContentColor = TextSecondary,
+        shape = RoundedCornerShape(24.dp),
+        title = { Text("New Category") },
         text = {
-            OutlinedTextField(
+            CleanOutlinedTextField(
                 value = newCategoryName,
                 onValueChange = { newCategoryName = it },
-                label = { Text("Category Name") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { focusManager.clearFocus() }
-                )
+                label = "Name",
+                icon = Icons.Filled.Label
             )
         },
         confirmButton = {
@@ -451,15 +422,12 @@ private fun AddCategoryDialog(
                         onDismiss()
                     }
                 },
-                enabled = newCategoryName.isNotBlank()
-            ) {
-                Text("Save")
-            }
+                enabled = newCategoryName.isNotBlank(),
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("Add") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
         }
     )
 }
