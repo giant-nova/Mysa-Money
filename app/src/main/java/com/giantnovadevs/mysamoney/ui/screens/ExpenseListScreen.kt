@@ -6,8 +6,11 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,16 +47,18 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.LoadAdError
+import kotlinx.coroutines.delay
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// --- Theme Colors (Matching Home Screen) ---
+// --- Theme Colors ---
 private val AppBackground = Color(0xFFF6F7F9)
 private val CardBackground = Color.White
 private val CardBorder = Color(0xFFEBEBEB)
 private val TextPrimary = Color(0xFF1A1C1E)
 private val TextSecondary = Color(0xFF72777F)
+private val DeleteColor = Color(0xFFFF3B30) // Standard Red
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,8 +75,9 @@ fun ExpenseListScreen(
 
     val context = LocalContext.current
     var showExportDialog by remember { mutableStateOf(false) }
+    var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
 
-    // --- Export Logic (Unchanged, just kept for functionality) ---
+    // --- Export Logic ---
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -93,9 +98,9 @@ fun ExpenseListScreen(
     }
 
     Scaffold(
-        containerColor = AppBackground, // Set Global Background
+        containerColor = AppBackground,
         topBar = {
-            CenterAlignedTopAppBar( // Modern Centered Title
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         "All Expenses",
@@ -137,21 +142,68 @@ fun ExpenseListScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp) // Airy spacing
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(expenses, key = { it.id }) { expense ->
                         val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "General"
 
-                        // Inline Card Style for Consistency
-                        ExpenseListTile(
-                            expense = expense,
-                            categoryName = categoryName,
-                            onClick = { navController.navigate("expense_entry?expenseId=${expense.id}") }
+                        // --- SWIPE TO DELETE LOGIC ---
+                        var isRemoved by remember { mutableStateOf(false) }
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    // Trigger confirmation dialog instead of deleting immediately
+                                    expenseToDelete = expense
+                                    false // Return false to snap back the row while dialog shows
+                                } else {
+                                    false
+                                }
+                            }
+                        )
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            backgroundContent = { DeleteBackground(dismissState) },
+                            content = {
+                                ExpenseListTile(
+                                    expense = expense,
+                                    categoryName = categoryName,
+                                    onClick = { navController.navigate("expense_entry?expenseId=${expense.id}") }
+                                )
+                            },
+                            enableDismissFromStartToEnd = false // Only swipe right-to-left
                         )
                     }
                 }
             }
         }
+    }
+
+    if (expenseToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { expenseToDelete = null },
+            title = { Text("Delete Expense?") },
+            text = { Text("Are you sure you want to remove this expense? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        expenseToDelete?.let { expVm.deleteExpense(it) }
+                        expenseToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { expenseToDelete = null }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = CardBackground,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary
+        )
     }
 
     if (showExportDialog) {
@@ -163,9 +215,33 @@ fun ExpenseListScreen(
 }
 
 /**
- * A Clean, White Tile representing an expense item.
- * Replaces the generic ExpenseItem with the specific "Grey-White" theme style.
+ * The Red Background that appears when swiping
  */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DeleteBackground(dismissState: SwipeToDismissBoxState) {
+    val color = if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+        DeleteColor
+    } else {
+        Color.Transparent
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(24.dp)) // Match the card shape
+            .background(color)
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = "Delete",
+            tint = Color.White
+        )
+    }
+}
+
 @Composable
 fun ExpenseListTile(
     expense: Expense,
@@ -239,6 +315,7 @@ fun ExpenseListTile(
     }
 }
 
+// ... (Rest of the file: EmptyState, ExportOptionsDialog, BannerAd remain unchanged) ...
 @Composable
 fun EmptyState() {
     Column(
@@ -248,7 +325,6 @@ fun EmptyState() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Soft background circle for the icon
         Box(
             modifier = Modifier
                 .size(100.dp)
@@ -290,8 +366,6 @@ private fun ExportOptionsDialog(
     onExport: (String) -> Unit
 ) {
     val context = LocalContext.current
-
-    // Custom Dialog styling to match the theme
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = CardBackground,
@@ -306,7 +380,7 @@ private fun ExportOptionsDialog(
                     icon = Icons.Default.TableView,
                     onClick = { onExport("CSV") }
                 )
-                HorizontalDivider(Modifier, thickness = 1.dp, color = CardBorder)
+                HorizontalDivider(color = CardBorder, thickness = 1.dp)
                 ExportDialogRow(
                     text = "PDF Document",
                     icon = Icons.Default.PictureAsPdf,
@@ -356,7 +430,7 @@ private fun BannerAd(modifier: Modifier = Modifier) {
         factory = { context ->
             AdView(context).apply {
                 setAdSize(AdSize.BANNER)
-                adUnitId = "ca-app-pub-3940256099942544/6300978111" // Test ID
+                adUnitId = "ca-app-pub-3940256099942544/6300978111"
                 adListener = object : AdListener() {
                     override fun onAdFailedToLoad(adError: LoadAdError) {
                         super.onAdFailedToLoad(adError)

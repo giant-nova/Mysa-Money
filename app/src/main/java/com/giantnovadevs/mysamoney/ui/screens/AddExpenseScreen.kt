@@ -74,6 +74,7 @@ fun AddExpenseScreen(
     val catVm: CategoryViewModel = viewModel()
     val categories by catVm.categories.collectAsState()
     val isEditMode = expenseId != null
+    var showDeleteDialog by remember { mutableStateOf(false) } // State for delete dialog
 
     // Form State
     var amount by remember { mutableStateOf("") }
@@ -157,6 +158,18 @@ fun AddExpenseScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                    }
+                },
+                actions = {
+                    // ✅ ONLY SHOW DELETE BUTTON IN EDIT MODE
+                    if (isEditMode) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Expense",
+                                tint = MaterialTheme.colorScheme.error // Red color
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -316,6 +329,39 @@ fun AddExpenseScreen(
                 )
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Expense?") },
+            text = { Text("Are you sure you want to delete this expense permanently?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // Delete logic
+                        if (isEditMode && expenseId != null) {
+                            // We need the full object to delete, or just ID if your VM supports it.
+                            // Assuming we loaded 'expenseToEdit' in the LaunchedEffect:
+                            expenseToEdit?.let { expVm.deleteExpense(it) }
+                        }
+                        showDeleteDialog = false
+                        navController.popBackStack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = CardBackground,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary
+        )
     }
 
     // Dialogs
