@@ -1,28 +1,39 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
 import android.app.Activity
-import android.util.Log
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -30,7 +41,13 @@ import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.viewmodel.ChatMessage
 import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
-import kotlinx.coroutines.launch
+
+// --- Theme Colors ---
+private val AppBackground = Color(0xFFF6F7F9)
+private val ChatUserBubble = Color(0xFF007AFF) // Classic Blue
+private val ChatCoachBubble = Color(0xFFE9E9EB) // Light Grey
+private val TextUser = Color.White
+private val TextCoach = Color.Black
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,97 +59,70 @@ fun FinancialCoachScreen(
 ) {
     val chatHistory by viewModel.chatHistory.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    var userQuestion by remember { mutableStateOf("") }
 
     val isPro by proViewModel.isProUser.collectAsState()
     val showAdDialog by viewModel.showAdDialog.collectAsState()
     val messageCredits by viewModel.messageCredits.collectAsState()
+
     val context = LocalContext.current
     val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
-    LaunchedEffect(isPro) {
-        viewModel.setUserProStatus(isPro)
-    }
+    LaunchedEffect(isPro) { viewModel.setUserProStatus(isPro) }
 
-    LaunchedEffect(chatHistory.size) {
-        if (chatHistory.isNotEmpty()) {
-            listState.animateScrollToItem(chatHistory.size - 1)
-        }
-    }
-
-    val navToHome: () -> Unit = {
-        navController.navigate("home") {
-            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+    // Scroll to bottom when new message arrives
+    LaunchedEffect(chatHistory.size, isLoading) {
+        if (chatHistory.isNotEmpty() || isLoading) {
+            listState.animateScrollToItem((chatHistory.size + (if(isLoading) 1 else 0)) - 1)
         }
     }
 
     Scaffold(
+        containerColor = AppBackground,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Financial Coach")
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Financial Coach",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                        )
                         if (isPro) {
+                            Spacer(Modifier.width(8.dp))
                             Badge(
-                                modifier = Modifier.padding(start = 8.dp),
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                            ) {
-                                Text("PRO", style = MaterialTheme.typography.labelSmall)
-                            }
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = Color.White
+                            ) { Text("PRO", style = MaterialTheme.typography.labelSmall) }
                         }
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navToHome() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go Back"
-                        )
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                // --- ✅ ITEM #6 FIX: Removed the 'actions' block ---
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = AppBackground
                 )
             )
         },
         bottomBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-                AnimatedVisibility(visible = isLoading) {
-                    Text(
-                        text = "Mysa Money Coach is thinking...",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .padding(top = 8.dp)
-                    )
-                }
-
-                ChatInputBar(
-                    text = userQuestion,
-                    onTextChange = { userQuestion = it },
-                    isLoading = isLoading,
-                    onSend = {
-                        if (userQuestion.isNotBlank()) {
-                            viewModel.askQuestion(userQuestion)
-                            userQuestion = ""
-                            focusManager.clearFocus()
-                        }
-                    },
-                    credits = messageCredits,
-                    isPro = isPro
-                )
-            }
+            ChatInputBar(
+                onSend = { text ->
+                    viewModel.askQuestion(text)
+                    focusManager.clearFocus()
+                },
+                isLoading = isLoading,
+                credits = messageCredits,
+                isPro = isPro
+            )
         }
     ) { padding ->
         LazyColumn(
@@ -141,109 +131,217 @@ fun FinancialCoachScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Welcome Message
+            if (chatHistory.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text(
+                            "Ask me anything about your finances!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
             items(chatHistory) { message ->
                 MessageBubble(message = message)
+            }
+
+            // Typing Indicator
+            if (isLoading) {
+                item {
+                    TypingIndicator()
+                }
             }
         }
     }
 
+    // Ad Dialog (Keep existing logic)
     if (showAdDialog && !isPro) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissAdDialog() },
-            title = { Text("You're out of free messages") },
-            text = { Text("Watch a short ad to get 3 more message credits, or upgrade to Pro for unlimited access.") },
+            title = { Text("Out of free messages") },
+            text = { Text("Watch a short ad to get 3 more credits, or upgrade to Pro for unlimited chats.") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        val activity = context as? Activity
-                        if (activity != null) {
-                            viewModel.showRewardAd(activity)
-                        }
-                    }
-                ) {
+                Button(onClick = { (context as? Activity)?.let { viewModel.showRewardAd(it) } }) {
                     Text("Watch Ad")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.dismissAdDialog() }) {
-                    Text("Maybe Later")
-                }
+                TextButton(onClick = { viewModel.dismissAdDialog() }) { Text("Later") }
             }
         )
     }
 }
 
-/**
- * A single chat bubble
- */
 @Composable
 fun MessageBubble(message: ChatMessage) {
-    val horizontalAlignment = if (message.isFromUser) Alignment.CenterEnd else Alignment.CenterStart
-    val bubbleColor = if (message.isFromUser) {
-        MaterialTheme.colorScheme.tertiaryContainer
+    val isUser = message.isFromUser
+
+    // ✅ FIX: Use Alignment.End and Alignment.Start
+    val alignment = if (isUser) Alignment.End else Alignment.Start
+
+    // Define colors based on sender
+    val bubbleColor = if (isUser) MaterialTheme.colorScheme.primary else ChatCoachBubble
+    val textColor = if (isUser) Color.White else TextCoach
+
+    // Bubble shape logic (tail position)
+    val shape = if (isUser) {
+        RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp) // User: Bottom-Right sharp
     } else {
-        MaterialTheme.colorScheme.secondaryContainer
+        RoundedCornerShape(20.dp, 20.dp, 20.dp, 4.dp) // Coach: Bottom-Left sharp
     }
 
-    Box(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        contentAlignment = horizontalAlignment
+        horizontalAlignment = alignment // Now this matches the required type
+    ) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = 300.dp)
+                .clip(shape)
+                .background(bubbleColor)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = message.message,
+                style = MaterialTheme.typography.bodyLarge,
+                color = textColor,
+                // Ensure text wraps correctly
+                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
+            )
+        }
+    }
+}
+@Composable
+fun TypingIndicator() {
+    val infiniteTransition = rememberInfiniteTransition(label = "dots")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp, 20.dp, 20.dp, 4.dp))
+            .background(ChatCoachBubble)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Text(
-            text = message.message,
-            // --- ✅ ITEM #5 FIX: Removed 'fillMaxWidth(0.85f)' ---
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(bubbleColor)
-                .padding(12.dp),
-            style = MaterialTheme.typography.bodyLarge
+            "Thinking",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextCoach.copy(alpha = 0.7f)
+        )
+        Text(
+            "...",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextCoach.copy(alpha = alpha),
+            fontWeight = FontWeight.Bold
         )
     }
 }
 
-/**
- * The text field and send button at the bottom
- */
 @Composable
 fun ChatInputBar(
-    text: String,
-    onTextChange: (String) -> Unit,
+    onSend: (String) -> Unit,
     isLoading: Boolean,
-    onSend: () -> Unit,
     credits: Int,
     isPro: Boolean
 ) {
-    Surface(
-        tonalElevation = 4.dp // Adds a slight shadow
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    var text by remember { mutableStateOf("") }
 
-            // Hide credit text if user is Pro
-            if (!isPro) {
+    Column(
+        modifier = Modifier
+            .background(Color.White) // Input area background
+            .padding(16.dp)
+    ) {
+        // Credits Indicator
+        if (!isPro) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
                 Text(
-                    text = "Free messages remaining: $credits",
+                    text = "$credits free messages remaining",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Modern Pill Input
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clip(CircleShape)
+                .background(AppBackground)
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                if (text.isEmpty()) {
+                    Text(
+                        "Ask your financial coach...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+                BasicTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.Black),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            if (text.isNotBlank() && !isLoading) {
+                                onSend(text)
+                                text = ""
+                            }
+                        }
+                    ),
+                    maxLines = 3,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
-            OutlinedTextField(
-                value = text,
-                onValueChange = onTextChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Ask a question...") },
-                trailingIcon = {
-                    IconButton(onClick = onSend, enabled = !isLoading && text.isNotBlank()) {
-                        Icon(Icons.Default.Send, contentDescription = "Send")
+            Spacer(Modifier.width(8.dp))
+
+            // Send Button
+            IconButton(
+                onClick = {
+                    if (text.isNotBlank()) {
+                        onSend(text)
+                        text = ""
                     }
                 },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { onSend() })
-            )
+                enabled = !isLoading && text.isNotBlank(),
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (text.isNotBlank()) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    )
+            ) {
+                Icon(
+                    Icons.Default.Send,
+                    contentDescription = "Send",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }
