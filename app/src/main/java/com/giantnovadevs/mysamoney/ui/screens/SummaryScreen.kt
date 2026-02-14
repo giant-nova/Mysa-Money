@@ -1,6 +1,7 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.Category
@@ -30,6 +32,7 @@ import com.giantnovadevs.mysamoney.viewmodel.BudgetViewModel
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ExpenseViewModel
 import java.text.DecimalFormat
+import kotlin.math.absoluteValue
 
 // --- Theme Colors ---
 private val AppBackground = Color(0xFFF6F7F9)
@@ -176,24 +179,189 @@ private fun AllSpendingTab(
     categoryTotals: List<CategoryTotal>,
     categories: List<Category>
 ) {
+    // 1. Sort by highest spending
     val sortedTotals = categoryTotals.sortedByDescending { it.total }
+
+    // 2. Calculate Context Data
+    val grandTotal = sortedTotals.sumOf { it.total }
+    val maxCategoryTotal = sortedTotals.maxOfOrNull { it.total } ?: 1.0
 
     if (sortedTotals.isEmpty()) {
         EmptySummaryState(message = "No spending recorded this month.")
     } else {
         LazyColumn(
             contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Header: Grand Total
+            item {
+                TotalSpendingHeader(grandTotal)
+            }
+
+            // List of Big Aesthetic Cards
             items(sortedTotals, key = { it.categoryId }) { total ->
                 val category = categories.find { it.id == total.categoryId }
-                AllSpendingTile(
-                    categoryName = category?.name ?: "Unknown",
-                    amount = total.total
+                val categoryName = category?.name ?: "Unknown"
+
+                // Calculate stats
+                val percentageOfTotal = (total.total / grandTotal).toFloat()
+                val relativeToMax = (total.total / maxCategoryTotal).toFloat()
+
+                AestheticSpendingCard(
+                    categoryName = categoryName,
+                    amount = total.total,
+                    percentage = percentageOfTotal,
+                    progress = relativeToMax
+                )
+            }
+
+            // Bottom spacer
+            item { Spacer(modifier = Modifier.height(20.dp)) }
+        }
+    }
+}
+
+// --- NEW COMPONENT: Total Spending Header ---
+@Composable
+private fun TotalSpendingHeader(total: Double) {
+    val decimalFormat = remember { DecimalFormat("₹#,##0") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Total Spending",
+            style = MaterialTheme.typography.labelMedium,
+            color = TextSecondary,
+            letterSpacing = 1.sp
+        )
+        Text(
+            text = decimalFormat.format(total),
+            style = MaterialTheme.typography.displayMedium, // Very Big Text
+            color = TextPrimary,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+// --- NEW COMPONENT: Aesthetic Spending Card ---
+@Composable
+private fun AestheticSpendingCard(
+    categoryName: String,
+    amount: Double,
+    percentage: Float,
+    progress: Float
+) {
+    val decimalFormat = remember { DecimalFormat("₹#,##0") }
+    // Generate a consistent pastel color for this category
+    val categoryColor = remember(categoryName) { getCategoryColor(categoryName) }
+
+    // Animation for the bar
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(1000),
+        label = "progress"
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        border = BorderStroke(1.dp, CardBorder),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            // Row 1: Icon, Name, and Amount
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Big Colorful Icon Box
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(categoryColor.copy(alpha = 0.2f)), // Pastel background
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = categoryName.take(1).uppercase(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = categoryColor, // Darker text of same hue
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Name and Amount
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = categoryName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = decimalFormat.format(amount),
+                        style = MaterialTheme.typography.headlineSmall, // Bigger Amount
+                        color = TextPrimary,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Row 2: Progress Bar & Percentage
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // The visual bar
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(AppBackground) // Track color
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(animatedProgress) // Fill based on relative spending
+                            .clip(RoundedCornerShape(50))
+                            .background(categoryColor)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // The percentage text
+                Text(
+                    text = "${(percentage * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
     }
+}
+
+// --- HELPER: Deterministic Pastel Color Generator ---
+private fun getCategoryColor(name: String): Color {
+    val hash = name.hashCode().absoluteValue
+    val hue = (hash % 360).toFloat()
+    // Saturation 0.65, Lightness 0.55 gives a nice vibrant but not neon look
+    return Color.hsl(hue, 0.65f, 0.45f)
 }
 
 // --- COMPONENT: Budget Progress Card ---
