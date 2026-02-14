@@ -194,10 +194,12 @@ fun HomeScreen(
                 )
             }
 
-            // 5. Recent Transactions Header & List
+            // --- 5. Recent Activity Header ---
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 8.dp), // Align with cards
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -207,17 +209,88 @@ fun HomeScreen(
                         color = TextPrimary,
                         fontWeight = FontWeight.Bold
                     )
+
+                    // Optional: "See All" button could go here
+                    Text(
+                        text = "See All",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { navController.navigate("list") }
+                    )
                 }
             }
 
-            items(expenses.take(5), key = { it.id }) { expense ->
+// -        -- 6. List of Recent Expenses (Styled as Clean Tiles) ---
+            items(expenses.take(3), key = { it.id }) { expense ->
                 val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "Unknown"
-                ExpenseItem(
-                    expense = expense,
-                    categoryName = categoryName,
-                    onClick = { navController.navigate("expense_entry?expenseId=${expense.id}") },
-                    onDelete = { expenseVm.deleteExpense(expense) }
-                )
+                val dateString = remember(expense.date) {
+                    val date = java.util.Date(expense.date)
+                    java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(date)
+                }
+                val decimalFormat = remember { DecimalFormat("₹#,##0") }
+
+                // Using the same "Dashboard Card" style for consistency
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { navController.navigate("expense_entry?expenseId=${expense.id}") },
+                    shape = RoundedCornerShape(24.dp), // Consistent soft corners
+                    colors = CardDefaults.cardColors(containerColor = CardBackground), // White
+                    border = BorderStroke(1.dp, CardBorder), // Subtle border
+                    elevation = CardDefaults.cardElevation(0.dp) // Flat
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(20.dp) // Comfortable padding
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Left Side: Icon + Details
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Category Icon Placeholder (Soft Circle)
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(AppBackground), // Light Grey background for icon
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = categoryName.take(2).uppercase(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column {
+                                Text(
+                                    text = expense.note?.ifBlank { categoryName } ?: "",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = dateString,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+
+                        // Right Side: Amount
+                        Text(
+                            text = "-${decimalFormat.format(expense.amount)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
             // Bottom spacer to avoid FAB overlap
