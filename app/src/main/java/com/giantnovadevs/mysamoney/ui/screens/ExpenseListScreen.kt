@@ -123,6 +123,16 @@ fun ExpenseListScreen(
                 )
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate("expense_entry?categoryId=null&expenseId=null") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White,
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Expense")
+            }
+        },
         bottomBar = {
             if (!isPro) {
                 Surface(color = AppBackground) {

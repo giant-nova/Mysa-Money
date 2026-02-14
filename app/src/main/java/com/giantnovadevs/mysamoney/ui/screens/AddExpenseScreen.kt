@@ -319,13 +319,14 @@ fun AddExpenseScreen(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    contentColor = Color.White, // Clear White text when active
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), // Faded background
+                    disabledContentColor = Color.White.copy(alpha = 0.5f) // Semi-transparent white text
                 )
             ) {
                 Text(
                     text = if (isEditMode) "Save Changes" else "Save Expense",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = TextPrimary
                 )
             }
         }
