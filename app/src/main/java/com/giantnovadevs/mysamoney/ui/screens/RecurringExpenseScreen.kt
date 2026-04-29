@@ -1,45 +1,52 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.EventRepeat
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.RecurringExpense
-import com.giantnovadevs.mysamoney.ui.theme.Expense
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.RecurringExpenseViewModel
+import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.ui.text.style.TextAlign
+import kotlin.math.absoluteValue
+
+// --- Theme Colors ---
+private val AppBackground = Color(0xFFF6F7F9)
+private val CardBackground = Color.White
+private val CardBorder = Color(0xFFEBEBEB)
+private val TextPrimary = Color(0xFF1A1C1E)
+private val TextSecondary = Color(0xFF72777F)
+private val DeleteColor = Color(0xFFFF3B30)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,41 +60,42 @@ fun RecurringExpenseScreen(
     val recurringExpenses by recurringVm.recurringExpenses.collectAsState()
     val categories by catVm.categories.collectAsState()
 
-    val navToHome: () -> Unit = {
-        navController.navigate("home") {
-            popUpTo(navController.graph.startDestinationId) { inclusive = true }
-        }
-    }
+    // State for delete confirmation
+    var expenseToDelete by remember { mutableStateOf<RecurringExpense?>(null) }
 
     Scaffold(
+        containerColor = AppBackground,
         topBar = {
-            TopAppBar(
-                title = { Text("Subscriptions & Bills") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Subscriptions",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = { navToHome() }) {
+                    IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go Back"
+                            contentDescription = "Go Back",
+                            tint = TextPrimary
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = AppBackground,
+                    titleContentColor = TextPrimary
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    // We'll create this screen next
-                    navController.navigate("recurring_expense_entry?id=null")
-                },
+                onClick = { navController.navigate("recurring_expense_entry?id=null") },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = Color.White,
+                shape = CircleShape
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Recurring Expense")
+                Icon(Icons.Default.Add, contentDescription = "Add Subscription")
             }
         }
     ) { padding ->
@@ -97,142 +105,233 @@ fun RecurringExpenseScreen(
             label = "Empty/List"
         ) { isEmpty ->
             if (isEmpty) {
-                // Show the empty state message
                 RecurringEmptyState()
             } else {
-                // Show the list
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(recurringExpenses, key = { it.id }) { expense ->
-                        val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "Unknown"
-                        RecurringExpenseRow(
-                            expense = expense,
-                            categoryName = categoryName,
-                            onDelete = { recurringVm.deleteRecurringExpense(expense) },
-                            onClick = {
-                                // Pass the navigation logic here
-                                navController.navigate("recurring_expense_entry?id=${expense.id}")
+                        val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "General"
+
+                        // --- SWIPE TO DELETE ---
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    expenseToDelete = expense
+                                    false // Snap back, show dialog
+                                } else {
+                                    false
+                                }
                             }
                         )
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            backgroundContent = { RecurringDeleteBackground(dismissState) },
+                            content = {
+                                RecurringExpenseTile(
+                                    expense = expense,
+                                    categoryName = categoryName,
+                                    onClick = { navController.navigate("recurring_expense_entry?id=${expense.id}") }
+                                )
+                            },
+                            enableDismissFromStartToEnd = false
+                        )
                     }
+
+                    // Spacer for FAB
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
             }
         }
+    }
+
+    // --- DELETE CONFIRMATION DIALOG ---
+    if (expenseToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { expenseToDelete = null },
+            title = { Text("Delete Subscription?") },
+            text = { Text("Are you sure you want to stop tracking this recurring expense? Future reminders will be cancelled.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        expenseToDelete?.let { recurringVm.deleteRecurringExpense(it) }
+                        expenseToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { expenseToDelete = null }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = CardBackground,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
+}
+
+/**
+ * Clean Tile for Recurring Expenses
+ */
+@Composable
+private fun RecurringExpenseTile(
+    expense: RecurringExpense,
+    categoryName: String,
+    onClick: () -> Unit
+) {
+    val decimalFormat = remember { DecimalFormat("₹#,##0") }
+    val dateFormatter = remember { SimpleDateFormat("MMM dd", Locale.getDefault()) }
+    val nextDueDate = dateFormatter.format(Date(expense.nextDueDate))
+    // Capitalize frequency (e.g., "Monthly")
+    val frequencyText = expense.frequency.name.lowercase().replaceFirstChar { it.titlecase() }
+
+    // Icon Color
+    val categoryColor = remember(categoryName) { getCategoryColor(categoryName) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        border = BorderStroke(1.dp, CardBorder),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(20.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Icon
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(categoryColor.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EventRepeat, // Recurring icon
+                        contentDescription = null,
+                        tint = categoryColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column {
+                    Text(
+                        text = expense.note ?: categoryName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "$frequencyText • Next: $nextDueDate",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                }
+            }
+
+            Text(
+                text = decimalFormat.format(expense.amount),
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Swipe Background
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RecurringDeleteBackground(dismissState: SwipeToDismissBoxState) {
+    val color = if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+        DeleteColor
+    } else {
+        Color.Transparent
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(24.dp))
+            .background(color)
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = "Delete",
+            tint = Color.White
+        )
     }
 }
 
 @Composable
 private fun RecurringEmptyState() {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(Color.White, CircleShape)
+                .border(1.dp, CardBorder, CircleShape),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Filled.SearchOff,
-                contentDescription = "No Subscriptions",
-                modifier = Modifier.size(80.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "No subscriptions found",
-                style = MaterialTheme.typography.titleLarge
-            )
-            Text(
-                text = "Tap the '+' button to add your rent, bills, or other recurring payments.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+                tint = TextSecondary
             )
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "No Subscriptions",
+            style = MaterialTheme.typography.titleLarge,
+            color = TextPrimary,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Tap the + button to track rent, bills, or recurring payments.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
-@Composable
-private fun RecurringExpenseRow(
-    expense: RecurringExpense,
-    categoryName: String,
-    onDelete: () -> Unit,
-    onClick: () -> Unit
-) {
-    val dateFormatter = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
-    val nextDueDate = dateFormatter.format(Date(expense.nextDueDate))
-    val frequencyText = expense.frequency.name.lowercase().replaceFirstChar { it.titlecase() }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Icon and Title
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "Recurring")
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = expense.note ?: categoryName,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-                // Delete Button
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Amount and Frequency
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "₹${expense.amount}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Expense,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = frequencyText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Next Due Date
-            Text(
-                text = "Next payment: $nextDueDate",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+// Helper for colors
+private fun getCategoryColor(name: String): Color {
+    val hash = name.hashCode().absoluteValue
+    val hue = (hash % 360).toFloat()
+    return Color.hsl(hue, 0.65f, 0.45f)
 }

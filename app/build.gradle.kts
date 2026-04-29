@@ -81,6 +81,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.litert.support.api)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.compose.animation.core)
     val room_version = "2.8.3"
 
     implementation("androidx.room:room-runtime:$room_version")

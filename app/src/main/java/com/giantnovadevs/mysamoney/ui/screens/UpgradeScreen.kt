@@ -1,29 +1,45 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
 import android.app.Activity
-import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
+import kotlinx.coroutines.delay
+
+// --- Theme Colors ---
+private val AppBackground = Color(0xFFF6F7F9)
+private val CardBackground = Color.White
+private val CardBorder = Color(0xFFEBEBEB)
+private val TextPrimary = Color(0xFF1A1C1E)
+private val TextSecondary = Color(0xFF72777F)
+private val ProHighlight = Color(0xFF8B5CF6) // A premium purple
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +51,36 @@ fun UpgradeScreen(
     val proPrice by proViewModel.proProductPrice.collectAsState()
     val isPro by proViewModel.isProUser.collectAsState()
 
+    // --- Animation States ---
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(100) // Slight delay for smoother entrance
+        isVisible = true
+    }
+
+    // 1. Floating Animation for the Hero Icon
+    val infiniteTransition = rememberInfiniteTransition(label = "float")
+    val floatOffset by infiniteTransition.animateFloat(
+        initialValue = -15f,
+        targetValue = 15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "iconFloat"
+    )
+
+    // 2. Heartbeat/Pulse Animation for the Button
+    val buttonScale by infiniteTransition.animateFloat(
+        initialValue = 0.90f,
+        targetValue = 1.00f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "buttonPulse"
+    )
+
     val navToHome: () -> Unit = {
         navController.navigate("home") {
             popUpTo(navController.graph.startDestinationId) { inclusive = true }
@@ -42,43 +88,60 @@ fun UpgradeScreen(
     }
 
     Scaffold(
+        containerColor = AppBackground,
         topBar = {
-            TopAppBar(
-                title = { Text("Upgrade to Pro") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Mysa Pro",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navToHome() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = AppBackground,
+                    titleContentColor = TextPrimary
                 )
             )
         },
-        // A persistent "call to action" button at the bottom
         bottomBar = {
-            Surface(tonalElevation = 4.dp) {
+            Surface(
+                color = AppBackground,
+                modifier = Modifier.padding(16.dp)
+            ) {
                 Button(
                     onClick = {
                         val activity = context as? Activity
-                        if (activity != null) {
-                            proViewModel.launchPurchase(activity)
-                        }
+                        if (activity != null) proViewModel.launchPurchase(activity)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    // If they are already Pro, this screen is just informational
-                    enabled = !isPro
+                        .height(56.dp)
+                        .graphicsLayer {
+                            scaleX = if (!isPro) buttonScale else 1f
+                            scaleY = if (!isPro) buttonScale else 1f
+                        },
+                    enabled = !isPro,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White,
+                        disabledContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        disabledContentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 8.dp,
+                        pressedElevation = 2.dp
+                    )
                 ) {
                     Text(
-                        text = if (isPro) "You are already a Pro member!" else "Upgrade Now ($proPrice)",
-                        style = MaterialTheme.typography.titleMedium
+                        text = if (isPro) "You're already a Pro!" else "Unlock Now ($proPrice)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -88,87 +151,121 @@ fun UpgradeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
+            // --- Hero Section ---
             item {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "Pro",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(80.dp)
-                )
-                Spacer(Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .padding(top = 20.dp, bottom = 16.dp)
+                        .graphicsLayer { translationY = floatOffset } // Applying the float
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(MaterialTheme.colorScheme.primary, ProHighlight)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AllInclusive,
+                        contentDescription = "Pro",
+                        tint = Color.White,
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+
                 Text(
-                    "Mysa Money Pro",
-                    style = MaterialTheme.typography.headlineMedium
+                    text = "Upgrade to Pro",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
                 )
+
                 Text(
-                    "Get peace of mind and unlock your full financial potential. All for a one-time purchase.",
+                    text = "Get peace of mind and unlock your full financial potential. One-time purchase, yours forever.",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 16.dp)
+                    color = TextSecondary,
+                    modifier = Modifier.padding(vertical = 16.dp, horizontal = 12.dp)
                 )
-                Divider()
             }
 
-            // --- The Comparison Table ---
+            // --- Comparison Table ---
             item {
-                ComparisonTable()
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = slideInVertically(
+                        initialOffsetY = { 100 },
+                        animationSpec = tween(600, easing = EaseOutBack)
+                    ) + fadeIn(tween(600))
+                ) {
+                    ComparisonTable()
+                }
+
+                // Extra padding for the bottom button
+                Spacer(modifier = Modifier.height(80.dp))
             }
         }
     }
 }
 
 /**
- * The comparison table
+ * Revamped Comparison Table Card
  */
 @Composable
 private fun ComparisonTable() {
-    Column(
-        modifier = Modifier.padding(vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        border = BorderStroke(1.dp, CardBorder),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        // Table Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Feature",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(2f),
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "Free",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "Pro",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Bold
-            )
+        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+            // Table Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Features",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = TextSecondary,
+                    modifier = Modifier.weight(2f)
+                )
+                Text(
+                    text = "Free",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = TextSecondary,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "PRO",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ProHighlight, // Highlighted text
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            HorizontalDivider(color = CardBorder, modifier = Modifier.padding(bottom = 8.dp))
+
+            // Feature Rows
+            FeatureComparisonRow("Remove All Ads", false, true)
+            FeatureComparisonRow("Unlimited AI Coach", false, true)
+            FeatureComparisonRow("Google Drive Backup", false, true)
+            FeatureComparisonRow("Premium App Themes", false, true)
+            FeatureComparisonRow("Monthly Budgets", true, true)
+            FeatureComparisonRow("Advanced Reports", true, true)
         }
-
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // Feature Rows
-        FeatureComparisonRow("Remove All Ads", false, true)
-        FeatureComparisonRow("Unlimited AI Coach", false, true)
-        FeatureComparisonRow("Google Drive Backup", false, true)
-        FeatureComparisonRow("Receipt Scanning (OCR)", false, true)
-        FeatureComparisonRow("Premium App Themes", false, true)
-        FeatureComparisonRow("Track Expenses & Income", true, true)
-        FeatureComparisonRow("Monthly Budgets", true, true)
-        FeatureComparisonRow("Advanced Reports", true, true)
     }
 }
 
@@ -184,41 +281,55 @@ private fun FeatureComparisonRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(vertical = 12.dp, horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Feature Name
         Text(
-            featureName,
-            style = MaterialTheme.typography.bodyLarge,
+            text = featureName,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = TextPrimary,
             modifier = Modifier.weight(2f)
         )
+
         // Free Checkmark
         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
             FeatureCheckmark(isAvailable = isFree)
         }
-        // Pro Checkmark
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+
+        // Pro Checkmark (With subtle background highlight)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(ProHighlight.copy(alpha = 0.05f)) // Subtle highlight
+                .padding(vertical = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
             FeatureCheckmark(isAvailable = isPro, isPro = true)
         }
     }
 }
 
 /**
- * A simple checkmark or cross icon
+ * Modern checkmark or cross icon
  */
 @Composable
 private fun FeatureCheckmark(isAvailable: Boolean, isPro: Boolean = false) {
-    val icon: ImageVector
-    val tint: Color
-
     if (isAvailable) {
-        icon = Icons.Filled.Check
-        tint = if (isPro) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        Icon(
+            imageVector = Icons.Filled.Check,
+            contentDescription = "Available",
+            tint = if (isPro) ProHighlight else MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
     } else {
-        icon = Icons.Filled.Close
-        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        Icon(
+            imageVector = Icons.Filled.Close,
+            contentDescription = "Not Available",
+            tint = TextSecondary.copy(alpha = 0.3f),
+            modifier = Modifier.size(20.dp)
+        )
     }
-
-    Icon(icon, contentDescription = if (isAvailable) "Available" else "Not Available", tint = tint)
 }

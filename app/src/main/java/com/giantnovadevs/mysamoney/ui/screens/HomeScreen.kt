@@ -1,61 +1,68 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.Category
 import com.giantnovadevs.mysamoney.data.Expense
+import com.giantnovadevs.mysamoney.data.RecurringExpense
 import com.giantnovadevs.mysamoney.ui.components.ExpenseItem
-import com.giantnovadevs.mysamoney.ui.theme.Expense as ExpenseColor // Use semantic colors
-import com.giantnovadevs.mysamoney.ui.theme.Success as SuccessColor // Use semantic colors
+import com.giantnovadevs.mysamoney.ui.theme.Expense as ExpenseColor
+import com.giantnovadevs.mysamoney.ui.theme.Success as SuccessColor
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ExpenseViewModel
+import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
 import com.giantnovadevs.mysamoney.viewmodel.IncomeViewModel
-import com.github.mikephil.charting.charts.PieChart
-import com.github.mikephil.charting.data.PieData
-import com.github.mikephil.charting.data.PieDataSet
-import com.github.mikephil.charting.data.PieEntry
-import java.text.DecimalFormat
-import java.util.Calendar
-import android.Manifest
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import com.giantnovadevs.mysamoney.viewmodel.RecurringExpenseViewModel
 import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.charts.PieChart
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.BarData
-import com.github.mikephil.charting.data.BarDataSet
-import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import com.github.mikephil.charting.formatter.ValueFormatter
+import com.github.mikephil.charting.utils.ColorTemplate
+import java.text.DecimalFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.lerp
-import com.giantnovadevs.mysamoney.data.RecurringExpense
-import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
-import com.giantnovadevs.mysamoney.viewmodel.RecurringExpenseViewModel
-import com.github.mikephil.charting.utils.ColorTemplate
-import com.github.mikephil.charting.formatter.ValueFormatter
+import java.util.Calendar
 import java.util.concurrent.TimeUnit
+
+// --- Custom Colors for the Grey-White Theme ---
+private val AppBackground = Color(0xFFF6F7F9) // Cool light grey
+private val CardBackground = Color.White
+private val CardBorder = Color(0xFFEBEBEB) // Very subtle border
+private val TextPrimary = Color(0xFF1A1C1E)
+private val TextSecondary = Color(0xFF72777F)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,17 +71,17 @@ fun HomeScreen(
     onMenuClick: () -> Unit,
     financialCoachViewModel: FinancialCoachViewModel
 ) {
-    // --- 1. Get All ViewModels & Data ---
+    // --- ViewModels & Data ---
     val expenseVm: ExpenseViewModel = viewModel()
     val catVm: CategoryViewModel = viewModel()
     val incomeVm: IncomeViewModel = viewModel()
     val recurringVm: RecurringExpenseViewModel = viewModel()
+
     val upcomingBills by recurringVm.recurringExpenses.collectAsState()
     val expenses by expenseVm.expenses.collectAsState()
     val categories by catVm.categories.collectAsState()
     val dailySpending by expenseVm.dailySpendingLast7Days.collectAsState()
 
-    // --- New Monthly Data ---
     val monthlyIncome by incomeVm.monthlyTotalIncome.collectAsState()
     val monthlyExpense by expenseVm.monthlyTotal.collectAsState()
     val monthlySurplus = monthlyIncome - monthlyExpense
@@ -82,66 +89,50 @@ fun HomeScreen(
     val insight by financialCoachViewModel.dashboardInsight.collectAsState()
     val isInsightLoading by financialCoachViewModel.isLoading.collectAsState()
 
-    LaunchedEffect(Unit) {
-        financialCoachViewModel.getDashboardInsight()
-    }
+    LaunchedEffect(Unit) { financialCoachViewModel.getDashboardInsight() }
 
-    // Chart colors from theme
+    // Colors & Context
     val chartColors = listOf(
         MaterialTheme.colorScheme.primary,
         MaterialTheme.colorScheme.secondary,
         MaterialTheme.colorScheme.tertiary,
         MaterialTheme.colorScheme.primaryContainer,
         MaterialTheme.colorScheme.secondaryContainer,
-        MaterialTheme.colorScheme.tertiaryContainer
     ).map { it.toArgb() }
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
-    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+
     val context = LocalContext.current
 
-    // Create the permission launcher
+    // Permission Logic
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            // Permission granted
-        } else {
-            // Permission denied. We can show a snackbar/toast here if we want.
-        }
-    }
+    ) { }
 
-    // Check and request permission when the screen first launches
     LaunchedEffect(Unit) {
-        // Only run this on Android 13 (API 33) and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val hasPermission = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (!hasPermission) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
 
-
     Scaffold(
-        // The Scaffold background is now the main background
-        // Cards will "float" on top of this
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = AppBackground, // Set the clean grey background
         topBar = {
-            TopAppBar(
-                title = { Text("Mysa Money") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Mysa Money",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Open Menu")
+                        Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = TextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = AppBackground, // Blend with background
+                    titleContentColor = TextPrimary
                 )
             )
         },
@@ -149,7 +140,9 @@ fun HomeScreen(
             FloatingActionButton(
                 onClick = { navController.navigate("expense_entry?categoryId=null&expenseId=null") },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = Color.White,
+                shape = CircleShape, // Modern circle FAB
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Expense")
             }
@@ -159,23 +152,20 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            // This is the key: Generous spacing between all card items
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(16.dp)
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp), // Increased horizontal padding
+            verticalArrangement = Arrangement.spacedBy(20.dp) // Airy spacing between cards
         ) {
 
+            // 1. AI Insight
             item {
                 InsightCard(
                     insight = insight,
                     isLoading = isInsightLoading,
-                    onClick = {
-                        // If it fails, tap to retry
-                        financialCoachViewModel.getDashboardInsight()
-                    }
+                    onClick = { financialCoachViewModel.getDashboardInsight() }
                 )
             }
 
-            // --- Item 1: Monthly Surplus Card ---
+            // 2. Main Monthly Stats
             item {
                 MonthlySurplusCard(
                     income = monthlyIncome,
@@ -184,64 +174,150 @@ fun HomeScreen(
                 )
             }
 
-            // --- Item 2: Quick Add Row ---
-            item {
-                QuickAddCardRow(
-                    categories = categories,
-                    onQuickAdd = { categoryId ->
-                        navController.navigate("add?categoryId=$categoryId")
-                    }
-                )
-            }
-
+            // 3. Upcoming Bills
             if (upcomingBills.isNotEmpty()) {
                 item {
                     UpcomingBillsCard(
-                        // Take the next 3 soonest bills
                         upcomingBills = upcomingBills.take(3),
                         categories = categories
                     )
                 }
             }
 
+            // 4. Charts (Horizontal Scroll)
             item {
                 ChartLazyRow(
-                    expenses = expenses, // For the pie chart
-                    categories = categories, // For the pie chart
-                    dailySpending = dailySpending, // For the bar chart
-                    chartColors = chartColors,
-                    onSurfaceColor = onSurfaceColor,
-                    onSurfaceVariantColor = onSurfaceVariantColor
+                    expenses = expenses,
+                    categories = categories,
+                    dailySpending = dailySpending,
+                    chartColors = chartColors
                 )
             }
 
-            // --- Item 4: "Recent" Header ---
+            // --- 5. Recent Activity Header ---
             item {
-                Text(
-                    text = "Recent Expenses",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 8.dp), // Align with cards
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Recent Activity",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // Optional: "See All" button could go here
+                    Text(
+                        text = "See All",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { navController.navigate("list") }
+                    )
+                }
             }
 
-            // --- Item 5: List of Recent Expenses ---
-            val recent = expenses.take(5)
-            items(recent, key = { it.id }) { expense ->
+// -        -- 6. List of Recent Expenses (Styled as Clean Tiles) ---
+            items(expenses.take(3), key = { it.id }) { expense ->
                 val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "Unknown"
-                // ExpenseItem is already a Card, so it fits perfectly
-                ExpenseItem(
-                    expense = expense,
-                    categoryName = categoryName,
-                    onClick = {
-                        navController.navigate("expense_entry?expenseId=${expense.id}")
-                    },
-                    onDelete = { expenseVm.deleteExpense(expense) }
-                )
+                val dateString = remember(expense.date) {
+                    val date = java.util.Date(expense.date)
+                    java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(date)
+                }
+                val decimalFormat = remember { DecimalFormat("₹#,##0") }
+
+                // Using the same "Dashboard Card" style for consistency
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { navController.navigate("expense_entry?expenseId=${expense.id}") },
+                    shape = RoundedCornerShape(24.dp), // Consistent soft corners
+                    colors = CardDefaults.cardColors(containerColor = CardBackground), // White
+                    border = BorderStroke(1.dp, CardBorder), // Subtle border
+                    elevation = CardDefaults.cardElevation(0.dp) // Flat
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(20.dp) // Comfortable padding
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Left Side: Icon + Details
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Category Icon Placeholder (Soft Circle)
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(AppBackground), // Light Grey background for icon
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = categoryName.take(2).uppercase(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column {
+                                Text(
+                                    text = expense.note?.ifBlank { categoryName } ?: "",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = dateString,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+
+                        // Right Side: Amount
+                        Text(
+                            text = "-${decimalFormat.format(expense.amount)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
+
+            // Bottom spacer to avoid FAB overlap
+            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
 }
 
+// --- REUSABLE CLEAN CARD COMPONENT ---
+@Composable
+fun DashboardCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp), // Softer corners
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        border = BorderStroke(1.dp, CardBorder), // Subtle border definition
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp) // Flat look
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp), // Generous internal padding
+            content = content
+        )
+    }
+}
 
 @Composable
 private fun InsightCard(
@@ -252,35 +328,112 @@ private fun InsightCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick, enabled = !isLoading), // Click to retry
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            .clickable(onClick = onClick, enabled = !isLoading),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            // Use a tinted color to make it stand out
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) // Very light tint
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
-            Icon(
-                Icons.Filled.AutoAwesome,
-                contentDescription = "AI Insight",
-                tint = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Spacer(Modifier.width(12.dp))
-
-            if (isLoading) {
-                Text(
-                    "Generating your daily insight...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(MaterialTheme.colorScheme.surface, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
                 )
-            } else {
+            }
+            Spacer(Modifier.width(16.dp))
+            Column {
                 Text(
-                    text = insight ?: "Tap to get your first insight!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    text = "Financial Insight",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                if (isLoading) {
+                    Text("Analyzing your finances...", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                } else {
+                    Text(
+                        text = insight ?: "Tap to generate insights.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthlySurplusCard(income: Double, expense: Double, surplus: Double) {
+    val decimalFormat = remember { DecimalFormat("₹#,##0") } // Removed decimals for cleaner look
+
+    DashboardCard {
+        Text(
+            text = "Total Balance",
+            style = MaterialTheme.typography.labelLarge,
+            color = TextSecondary
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = decimalFormat.format(surplus),
+            style = MaterialTheme.typography.displaySmall, // Big Hero Text
+            color = if (surplus >= 0) TextPrimary else ExpenseColor,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).background(SuccessColor, CircleShape))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Income", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = decimalFormat.format(income),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
+
+            // Vertical Divider
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(40.dp)
+                    .background(CardBorder)
+            )
+
+            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Expense", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(modifier = Modifier.size(8.dp).background(ExpenseColor, CircleShape))
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = decimalFormat.format(expense),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
                 )
             }
         }
@@ -292,481 +445,287 @@ private fun UpcomingBillsCard(
     upcomingBills: List<RecurringExpense>,
     categories: List<Category>
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(Modifier.padding(16.dp)) {
+    DashboardCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 text = "Upcoming Bills",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
             )
+            Icon(
+                Icons.Outlined.Notifications,
+                contentDescription = null,
+                tint = TextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
 
-            // A column for the bill rows
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                upcomingBills.forEach { bill ->
-                    val categoryName = categories.find { it.id == bill.categoryId }?.name ?: "Unknown"
-                    UpcomingBillRow(bill = bill, categoryName = categoryName)
-                }
+        Spacer(Modifier.height(16.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            upcomingBills.forEach { bill ->
+                val categoryName = categories.find { it.id == bill.categoryId }?.name ?: "General"
+                UpcomingBillRow(bill = bill, categoryName = categoryName)
             }
         }
     }
 }
 
-/**
- * A helper composable for a single bill row.
- */
 @Composable
 private fun UpcomingBillRow(bill: RecurringExpense, categoryName: String) {
-    val decimalFormat = remember { DecimalFormat("₹#,##0.00") }
-
-    // --- Calculate "Due in X days" ---
+    val decimalFormat = remember { DecimalFormat("₹#,##0") }
     val todayMillis = System.currentTimeMillis()
     val diffMillis = bill.nextDueDate - todayMillis
     val daysRemaining = TimeUnit.MILLISECONDS.toDays(diffMillis)
 
-    val dueDateText = when {
-        daysRemaining < 0 -> "Overdue"
-        daysRemaining == 0L -> "Due today"
-        daysRemaining == 1L -> "Due in 1 day"
-        else -> "Due in $daysRemaining days"
+    val (timeText, timeColor) = when {
+        daysRemaining < 0 -> "Overdue" to ExpenseColor
+        daysRemaining == 0L -> "Today" to ExpenseColor
+        daysRemaining == 1L -> "Tomorrow" to MaterialTheme.colorScheme.primary
+        else -> "in $daysRemaining days" to TextSecondary
     }
-    val dateColor = if (daysRemaining < 3) ExpenseColor else MaterialTheme.colorScheme.onSurfaceVariant
-    // ---
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Left side: Name and Date
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Filled.Notifications, // Or Icons.Filled.Refresh
-                contentDescription = "Upcoming Bill",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Category Dot
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AppBackground),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = categoryName.take(1),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = TextSecondary
+                )
+            }
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
                     text = bill.note ?: categoryName,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary
                 )
                 Text(
-                    text = dueDateText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = dateColor
+                    text = timeText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = timeColor
                 )
             }
         }
-
-        // Right side: Amount
         Text(
             text = decimalFormat.format(bill.amount),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
         )
     }
 }
+
 @Composable
 private fun ChartLazyRow(
     expenses: List<Expense>,
     categories: List<Category>,
     dailySpending: Map<LocalDate, Double>,
-    chartColors: List<Int>,
-    onSurfaceColor: Int,
-    onSurfaceVariantColor: Int
+    chartColors: List<Int>
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(horizontal = 0.dp) // Handled by parent
+        contentPadding = PaddingValues(horizontal = 0.dp)
     ) {
-        // --- Chart 1: Pie Chart ---
         item {
-            SpendingChartCard(
-                expenses = expenses,
-                categories = categories,
-                chartColors = chartColors,
-                onSurfaceColor = onSurfaceColor,
-                onSurfaceVariantColor = onSurfaceVariantColor,
-                modifier = Modifier
-                    .width(320.dp)
-                    .height(300.dp)
-            )
+            ChartCardContainer(title = "Spending Share") {
+                SpendingPieChart(expenses, categories, chartColors)
+            }
         }
-
-        // --- Chart 2: Bar Chart ---
         item {
-            DailySpendingBarChart(
-                data = dailySpending,
-                chartColors = chartColors,
-                onSurfaceColor = onSurfaceColor,
-                onSurfaceVariantColor = onSurfaceVariantColor,
-                modifier = Modifier
-                    .width(320.dp)
-                    .height(300.dp)
-            )
+            ChartCardContainer(title = "Last 7 Days") {
+                DailySpendingBarChart(dailySpending, chartColors)
+            }
         }
-
-        // --- Chart 3: Heatmap ---
         item {
-            DailySpendingHeatmap(
-                data = dailySpending,
-                modifier = Modifier
-                    .width(320.dp)
-                    .height(300.dp)
-            )
+            ChartCardContainer(title = "Intensity Map") {
+                DailySpendingHeatmap(dailySpending)
+            }
         }
     }
 }
 
+@Composable
+fun ChartCardContainer(
+    title: String,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .width(300.dp)
+            .height(280.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        border = BorderStroke(1.dp, CardBorder),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = TextSecondary,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(16.dp))
+            Box(modifier = Modifier.fillMaxSize(), content = content)
+        }
+    }
+}
 
-/**
- * ✅ This is our NEW Bar Chart composable
- */
+// --- CHARTS (Visual Clean Up) ---
+
+@Composable
+private fun SpendingPieChart(
+    expenses: List<Expense>,
+    categories: List<Category>,
+    chartColors: List<Int>
+) {
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { ctx ->
+            PieChart(ctx).apply {
+                description.isEnabled = false
+                isDrawHoleEnabled = true
+                setHoleColor(android.graphics.Color.WHITE) // Match card background
+                setTransparentCircleAlpha(0)
+                holeRadius = 65f // Thinner ring looks more modern
+                setUsePercentValues(false)
+                setDrawEntryLabels(false)
+                legend.isEnabled = false
+            }
+        },
+        update = { view ->
+            // Logic remains same, just ensuring colors match
+            val sums = expenses.groupBy { it.categoryId }
+                .mapValues { it.value.sumOf { e -> e.amount } }
+
+            val entries = sums.map { (catId, sum) ->
+                PieEntry(sum.toFloat(), categories.find { it.id == catId }?.name ?: "")
+            }
+
+            val ds = PieDataSet(entries, "").apply {
+                colors = chartColors
+                sliceSpace = 3f
+                setDrawValues(false) // Clean look: no numbers on chart
+            }
+            view.data = PieData(ds)
+            view.invalidate()
+        }
+    )
+}
+
 @Composable
 private fun DailySpendingBarChart(
     data: Map<LocalDate, Double>,
-    chartColors: List<Int>,
-    onSurfaceColor: Int,
-    onSurfaceVariantColor: Int,
-    modifier: Modifier = Modifier
+    chartColors: List<Int>
 ) {
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                text = "Daily Spending (Last 7 Days)",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    BarChart(ctx).apply {
-                        description.isEnabled = false
-                        legend.isEnabled = false
-                        // X-Axis setup (Day labels)
-                        xAxis.position = XAxis.XAxisPosition.BOTTOM
-                        xAxis.setDrawGridLines(false)
-                        xAxis.textColor = onSurfaceVariantColor
-                        xAxis.granularity = 1f
-                        // Y-Axis setup
-                        axisLeft.textColor = onSurfaceVariantColor
-                        axisLeft.setDrawGridLines(true)
-                        axisLeft.axisMinimum = 0f
-                        axisRight.isEnabled = false
-                    }
-                },
-                update = { barChart ->
-                    if (data.isEmpty()) {
-                        barChart.clear()
-                        return@AndroidView
-                    }
+    val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
 
-                    // Get "Mon", "Tue", "Wed" labels
-                    val dayFormatter = DateTimeFormatter.ofPattern("E")
-                    val labels = data.keys.map { it.format(dayFormatter) }
-                    barChart.xAxis.valueFormatter = IndexAxisValueFormatter(labels)
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { ctx ->
+            BarChart(ctx).apply {
+                description.isEnabled = false
+                legend.isEnabled = false
+                setDrawGridBackground(false)
 
-                    // Create BarEntry list
-                    val entries = data.values.mapIndexed { index, value ->
-                        BarEntry(index.toFloat(), value.toFloat())
-                    }
+                // Clean X Axis
+                xAxis.position = XAxis.XAxisPosition.BOTTOM
+                xAxis.setDrawGridLines(false)
+                xAxis.setDrawAxisLine(false)
+                xAxis.textColor = android.graphics.Color.parseColor("#72777F")
+                xAxis.textSize = 10f
+                xAxis.granularity = 1f
 
-                    val dataSet = BarDataSet(entries, "Daily Spending")
-                    dataSet.color = chartColors.first() // Use primary color
-                    dataSet.valueTextColor = onSurfaceColor
-                    dataSet.valueTextSize = 10f
-
-                    val barData = BarData(dataSet)
-                    barData.barWidth = 0.5f
-
-                    barChart.data = barData
-                    barChart.invalidate() // Refresh the chart
-                }
-            )
-        }
-    }
-}
-/**
- * The new "Monthly Surplus" Card
- */
-@Composable
-private fun MonthlySurplusCard(income: Double, expense: Double, surplus: Double) {
-    val decimalFormat = remember { DecimalFormat("₹#,##0.00") }
-
-    // Determine color for surplus
-    val surplusColor = if (surplus >= 0) SuccessColor else ExpenseColor
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Row 1: Title and Main Surplus
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Monthly Surplus",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = decimalFormat.format(surplus),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = surplusColor,
-                    fontWeight = FontWeight.Bold
-                )
+                // Clean Y Axis
+                axisLeft.setDrawAxisLine(false)
+                axisLeft.setDrawGridLines(true) // Keep horizontal grid for readability
+                axisLeft.gridColor = android.graphics.Color.parseColor("#F0F0F0")
+                axisLeft.textColor = android.graphics.Color.parseColor("#72777F")
+                axisRight.isEnabled = false
             }
+        },
+        update = { chart ->
+            if (data.isNotEmpty()) {
+                val dayFormatter = DateTimeFormatter.ofPattern("E")
+                val labels = data.keys.map { it.format(dayFormatter) }
+                chart.xAxis.valueFormatter = IndexAxisValueFormatter(labels)
 
-            // Divider
-            Divider()
-
-            // Row 2: Income vs Expense
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                // Income Column
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Income",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = decimalFormat.format(income),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = SuccessColor
-                    )
+                val entries = data.values.mapIndexed { i, v -> BarEntry(i.toFloat(), v.toFloat()) }
+                val ds = BarDataSet(entries, "").apply {
+                    color = primaryColor
+                    setDrawValues(false) // Clean look
                 }
 
-                // Expense Column
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Expense",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = decimalFormat.format(expense),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = ExpenseColor
-                    )
-                }
+                chart.data = BarData(ds).apply { barWidth = 0.4f }
+                chart.invalidate()
             }
         }
-    }
-}
-
-/**
- * The new "Quick Add" Row with Cards
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun QuickAddCardRow(
-    categories: List<Category>,
-    onQuickAdd: (Int) -> Unit
-) {
-    val quickAddMapping = mapOf(
-        "Food" to Icons.Default.Fastfood,
-        "Transport" to Icons.Default.Train,
-        "Bills" to Icons.Default.Receipt,
-        "Rent" to Icons.Default.Home
     )
-    val quickAddCategories = categories.filter { quickAddMapping.containsKey(it.name) }
-
-    if (quickAddCategories.isNotEmpty()) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "Quick Add",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 12.dp) // Space before cards
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(quickAddCategories, key = { it.id }) { category ->
-                    val icon = quickAddMapping[category.name] ?: Icons.Default.Add
-
-                    // This is the new "small sized card"
-                    Card(
-                        onClick = { onQuickAdd(category.id) },
-                        modifier = Modifier
-                            .width(90.dp)
-                            .height(90.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(icon, contentDescription = category.name, modifier = Modifier.size(32.dp))
-                            Spacer(Modifier.height(8.dp))
-                            Text(text = category.name, style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
-/**
- * The Spending Chart Card (Unchanged, but now with consistent elevation)
- */
 @Composable
-private fun SpendingChartCard(
-    expenses: List<Expense>,
-    categories: List<Category>,
-    chartColors: List<Int>,
-    onSurfaceColor: Int,
-    onSurfaceVariantColor: Int,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // Consistent elevation
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                text = "Spending (Last 7 Days)", // Added context
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    PieChart(ctx).apply {
-                        description.isEnabled = false
-                        isDrawHoleEnabled = true
-                        setUsePercentValues(true)
-                        setDrawEntryLabels(false) // ✅ Hides labels inside slices
-                        legend.isEnabled = false
-                        legend.textColor = onSurfaceVariantColor
-                    }
-                },
-                update = { view ->
-                    val now = Calendar.getInstance()
-                    now.set(Calendar.HOUR_OF_DAY, 0); now.set(Calendar.MINUTE, 0); now.set(Calendar.SECOND, 0); now.set(Calendar.MILLISECOND, 0)
-                    val start = now.timeInMillis - 6 * 86_400_000L
-                    val filtered = expenses.filter { it.date >= start }
-
-                    val sums = mutableMapOf<Int, Double>()
-                    filtered.forEach { e ->
-                        sums[e.categoryId] = (sums[e.categoryId] ?: 0.0) + e.amount
-                    }
-
-                    val entries = sums.mapNotNull { (catId, sum) ->
-                        val label = categories.find { it.id == catId }?.name ?: "Other"
-                        PieEntry(sum.toFloat(), label)
-                    }
-
-                    val ds = PieDataSet(entries, "")
-                    ds.sliceSpace = 2f
-                    ds.valueTextSize = 12f
-                    ds.colors = ColorTemplate.MATERIAL_COLORS.toList() +
-                            ColorTemplate.VORDIPLOM_COLORS.toList() +
-                            ColorTemplate.JOYFUL_COLORS.toList() +
-                            ColorTemplate.COLORFUL_COLORS.toList() +
-                            ColorTemplate.LIBERTY_COLORS.toList() +
-                            ColorTemplate.PASTEL_COLORS.toList()
-                    ds.xValuePosition = PieDataSet.ValuePosition.OUTSIDE_SLICE
-                    ds.yValuePosition = PieDataSet.ValuePosition.OUTSIDE_SLICE
-                    ds.valueLinePart1Length = 0.4f
-                    ds.valueLinePart2Length = 0.8f
-                    ds.valueLineColor = onSurfaceVariantColor
-                    ds.valueTextColor = onSurfaceColor
-
-                    val data = PieData(ds)
-                    data.setValueFormatter(object : ValueFormatter() {
-                        override fun getPieLabel(value: Float, pieEntry: PieEntry?): String {
-                            return pieEntry?.label ?: ""
-                        }
-                    })
-                    view.data = data
-                    view.invalidate()
-                }
-            )
-        }
-    }
-}
-
-/**
- * ✅ This is our NEW 7-Day Heatmap composable
- */
-@Composable
-private fun DailySpendingHeatmap(
-    data: Map<LocalDate, Double>,
-    modifier: Modifier = Modifier
-) {
-    // Find the max amount for scaling the color
+private fun DailySpendingHeatmap(data: Map<LocalDate, Double>) {
     val maxAmount = data.values.maxOrNull() ?: 1.0
-    // Get the theme's primary color for the "hot" state
     val hotColor = MaterialTheme.colorScheme.primary
-    // Get the "cold" color
     val coldColor = MaterialTheme.colorScheme.surfaceVariant
+    val dayFormatter = remember { DateTimeFormatter.ofPattern("EEE") }
 
-    val dayFormatter = remember { DateTimeFormatter.ofPattern("E") }
-
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Row(
+        modifier = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                text = "Daily Spending Heatmap",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(16.dp))
+        if (data.isEmpty()) {
+            Text("No recent data", color = TextSecondary)
+        } else {
+            data.entries.forEach { (date, amount) ->
+                val fraction = (amount / maxAmount).toFloat().coerceIn(0f, 1f)
+                val color = lerp(coldColor, hotColor, fraction)
 
-            // A Row of 7 blocks for the 7 days
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (data.isEmpty()) {
-                    Text("No data for this period.")
-                } else {
-                    data.entries.forEach { (date, amount) ->
-                        // Calculate the "heat" (0.0f to 1.0f)
-                        val fraction = (amount / maxAmount).toFloat().coerceIn(0f, 1f)
-                        // Find the color by blending cold and hot
-                        val color = lerp(coldColor, hotColor, fraction)
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = date.format(dayFormatter),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(color)
-                            )
-                        }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Pill shape for heatmap
+                    Box(
+                        modifier = Modifier
+                            .width(12.dp)
+                            .height(60.dp) // Taller, thinner bars
+                            .clip(RoundedCornerShape(50))
+                            .background(color.copy(alpha = 0.2f)) // Track
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(fraction) // Fill based on amount
+                                .align(Alignment.BottomCenter)
+                                .background(color)
+                        )
                     }
+                    Text(
+                        text = date.format(dayFormatter).take(1),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary
+                    )
                 }
             }
         }

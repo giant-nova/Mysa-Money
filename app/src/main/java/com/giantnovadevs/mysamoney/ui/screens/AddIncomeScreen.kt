@@ -1,13 +1,18 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material3.*
@@ -15,27 +20,37 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.giantnovadevs.mysamoney.data.Income // ✅ Import Income
+import com.giantnovadevs.mysamoney.data.Income
 import com.giantnovadevs.mysamoney.viewmodel.IncomeViewModel
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+
+// --- Theme Colors ---
+private val AppBackground = Color(0xFFF6F7F9)
+private val CardBackground = Color.White
+private val CardBorder = Color(0xFFEBEBEB)
+private val TextPrimary = Color(0xFF1A1C1E)
+private val TextSecondary = Color(0xFF72777F)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddIncomeScreen(
     navController: NavController,
-    incomeId: String? // ✅ Use incomeId
+    incomeId: String?
 ) {
     val incomeVm: IncomeViewModel = viewModel()
+    val focusManager = LocalFocusManager.current
 
-    // --- ✅ ADD THIS "EDIT MODE" LOGIC ---
     val isEditMode = incomeId != null
     var incomeToEdit by remember { mutableStateOf<Income?>(null) }
 
@@ -44,8 +59,14 @@ fun AddIncomeScreen(
     var note by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // This LaunchedEffect will run ONCE if we are in edit mode
+    // Validation
+    val isFormValid by remember(amount, note) {
+        mutableStateOf((amount.toDoubleOrNull() ?: 0.0) > 0 && note.isNotBlank())
+    }
+
+    // --- Load Data for Edit Mode ---
     LaunchedEffect(incomeId) {
         if (isEditMode) {
             val id = incomeId?.toIntOrNull() ?: -1
@@ -59,120 +80,100 @@ fun AddIncomeScreen(
             }
         }
     }
-    // --- END OF "EDIT MODE" LOGIC ---
-
-    // Form validation
-    val isFormValid by remember(amount, note) {
-        mutableStateOf(
-            (amount.toDoubleOrNull() ?: 0.0) > 0 && note.isNotBlank()
-        )
-    }
-
-
-    val navToHome: () -> Unit = {
-        navController.navigate("home") {
-            popUpTo(navController.graph.startDestinationId) { inclusive = true }
-        }
-    }
 
     Scaffold(
+        containerColor = AppBackground,
         topBar = {
-            TopAppBar(
-                title = { Text(if (isEditMode) "Edit Income" else "Add Income") },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        if (isEditMode) "Edit Income" else "Add Income",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = { navToHome() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go Back"
-                        )
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                actions = {
+                    // Only show delete in edit mode
+                    if (isEditMode) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = AppBackground,
+                    titleContentColor = TextPrimary
                 )
             )
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            // --- Form Card ---
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                border = BorderStroke(1.dp, CardBorder),
+                elevation = CardDefaults.cardElevation(0.dp)
             ) {
-                // --- 1. Amount Field ---
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = {
-                        if (it.matches(Regex("^\\d*\\.?\\d{0,2}\$"))) {
-                            amount = it
-                        }
-                    },
-                    label = { Text("Amount") },
-                    leadingIcon = { Icon(Icons.Filled.MonetizationOn, "Amount") },
-                    prefix = { Text("₹ ") },
-                    textStyle = MaterialTheme.typography.titleLarge,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Decimal,
-                        imeAction = ImeAction.Next
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // --- 2. Note Field ---
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = { Text("Note (e.g., 'Salary', 'Freelance')") },
-                    leadingIcon = { Icon(Icons.Filled.Notes, "Note") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Done,
-                        capitalization = KeyboardCapitalization.Words
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // --- 3. Date Picker ---
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDatePicker = true }
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    OutlinedTextField(
-                        value = selectedDate.format(DateTimeFormatter.ofPattern("dd MMM, yyyy")),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Date") },
-                        leadingIcon = { Icon(Icons.Filled.DateRange, "Date") },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = false,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledContainerColor = Color.Transparent,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    // 1. Amount
+                    CleanOutlinedTextField(
+                        value = amount,
+                        onValueChange = { if (it.matches(Regex("^\\d*\\.?\\d*\$"))) amount = it },
+                        label = "Amount",
+                        icon = Icons.Filled.MonetizationOn,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                        prefix = { Text("₹ ", style = MaterialTheme.typography.bodyLarge, color = TextPrimary) }
                     )
+
+                    // 2. Note
+                    CleanOutlinedTextField(
+                        value = note,
+                        onValueChange = { note = it },
+                        label = "Source (e.g. Salary, Freelance)",
+                        icon = Icons.Filled.Notes,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            capitalization = KeyboardCapitalization.Words,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                    )
+
+                    // 3. Date Picker
+                    Box(modifier = Modifier.clickable { showDatePicker = true }) {
+                        CleanOutlinedTextField(
+                            value = selectedDate.format(DateTimeFormatter.ofPattern("dd MMM, yyyy")),
+                            onValueChange = {},
+                            label = "Date Received",
+                            icon = Icons.Filled.DateRange,
+                            enabled = false // Click handled by Box
+                        )
+                    }
                 }
             }
 
-            // --- Save Button (Bottom Aligned) ---
+            // --- Save Button ---
             Button(
                 onClick = {
                     val dateInMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-                    // ✅ THIS IS THE NEW LOGIC
-                    if (isEditMode) {
-                        // We are UPDATING
+                    if (isEditMode && incomeToEdit != null) {
                         val updatedIncome = incomeToEdit!!.copy(
                             amount = amount.toDoubleOrNull() ?: 0.0,
                             note = note,
@@ -180,7 +181,6 @@ fun AddIncomeScreen(
                         )
                         incomeVm.updateIncome(updatedIncome)
                     } else {
-                        // We are ADDING
                         incomeVm.addIncome(
                             amount = amount.toDoubleOrNull() ?: 0.0,
                             note = note,
@@ -192,43 +192,115 @@ fun AddIncomeScreen(
                 enabled = isFormValid,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
-                    .align(Alignment.BottomCenter)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    disabledContentColor = Color.White.copy(alpha = 0.5f)
+                )
             ) {
                 Text(
-                    text = if (isEditMode) "Save Changes" else "Save Income", // ✅
-                    style = MaterialTheme.typography.titleMedium
+                    text = if (isEditMode) "Save Changes" else "Save Income",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
         }
     }
 
+    // --- Delete Dialog ---
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Income?") },
+            text = { Text("Are you sure you want to remove this income entry? This affects your balance.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        incomeToEdit?.let { incomeVm.deleteIncome(it) }
+                        showDeleteDialog = false
+                        navController.popBackStack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            },
+            containerColor = CardBackground,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
+
     // --- Date Picker Dialog ---
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault())
-                .toInstant()
-                .toEpochMilli()
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            selectedDate = java.time.Instant.ofEpochMilli(millis)
-                                .atZone(ZoneId.systemDefault())
-                                .toLocalDate()
-                        }
-                        showDatePicker = false
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        selectedDate = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
                     }
-                ) { Text("OK") }
+                    showDatePicker = false
+                }) { Text("OK") }
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-            }
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } },
+            colors = DatePickerDefaults.colors(containerColor = CardBackground)
         ) {
             DatePicker(state = datePickerState)
         }
     }
+}
+
+/**
+ * Reusable Clean Text Field Style
+ */
+@Composable
+private fun CleanOutlinedTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    readOnly: Boolean = false,
+    enabled: Boolean = true,
+    prefix: @Composable (() -> Unit)? = null,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        leadingIcon = { Icon(icon, contentDescription = null, tint = TextSecondary) },
+        prefix = prefix,
+        readOnly = readOnly,
+        enabled = enabled,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(color = TextPrimary),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            disabledContainerColor = Color.White,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = CardBorder,
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = TextSecondary,
+            disabledBorderColor = CardBorder,
+            disabledTextColor = TextPrimary,
+            disabledLabelColor = TextSecondary
+        ),
+        modifier = modifier.fillMaxWidth(),
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions
+    )
 }
