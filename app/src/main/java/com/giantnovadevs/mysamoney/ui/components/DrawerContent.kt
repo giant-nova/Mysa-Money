@@ -168,6 +168,7 @@ private fun PremiumUpgradeCard(onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
+                .fillMaxWidth() //
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
@@ -179,11 +180,25 @@ private fun PremiumUpgradeCard(onClick: () -> Unit) {
                 .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Star, contentDescription = "Pro", tint = Color.White, modifier = Modifier.size(28.dp))
+                Icon(
+                    imageVector = Icons.Default.AllInclusive,
+                    contentDescription = "Pro",
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
                 Spacer(Modifier.width(16.dp))
                 Column {
-                    Text("Unlock Pro", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
-                    Text("No ads, advanced tools.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
+                    Text(
+                        text = "Unlock Mysa Pro",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "No ads, advanced tools.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
                 }
             }
         }
