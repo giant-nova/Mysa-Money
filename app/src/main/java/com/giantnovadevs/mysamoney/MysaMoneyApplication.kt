@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.giantnovadevs.mysamoney.ads.AppOpenAdManager
 import com.giantnovadevs.mysamoney.worker.NotificationHelper
 import com.giantnovadevs.mysamoney.worker.SubscriptionWorker
 import com.google.android.gms.ads.MobileAds
@@ -14,6 +15,7 @@ class MysaMoneyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         MobileAds.initialize(this)
+        AppOpenAdManager.load(this)
         setupRecurringWork()
         val notificationHelper = NotificationHelper(this)
         notificationHelper.createNotificationChannel()

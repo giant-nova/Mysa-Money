@@ -1,10 +1,12 @@
 package com.giantnovadevs.mysamoney.ui.components
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Category // ✅ Now you can import this!
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -17,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.collectAsState
 import com.giantnovadevs.mysamoney.BuildConfig
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
+import com.google.android.gms.ads.MobileAds
 
 @Composable
 fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose: () -> Unit) {
@@ -32,6 +36,7 @@ fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose:
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val isPro by proViewModel.isProUser.collectAsState()
+    val context = LocalContext.current
     ModalDrawerSheet {
         Column(Modifier.padding(16.dp)) {
             Text(
@@ -120,6 +125,19 @@ fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose:
                 icon = Icons.Default.Info,
                 isSelected = currentRoute == "about",
                 onClick = { navController.navigate("about"); onClose() }
+            )
+            DrawerItem(
+                label = "Ad Inspector",
+                icon = Icons.Default.Build,
+                isSelected = false,
+                onClick = {
+                    MobileAds.openAdInspector(context) { error ->
+                        if (error != null) {
+                            Toast.makeText(context, "Ad Inspector failed: ${error.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    onClose()
+                }
             )
 
             Spacer(Modifier.weight(1f)) // This pushes the footer to the bottom

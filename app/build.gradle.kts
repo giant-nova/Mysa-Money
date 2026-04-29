@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
+    id("com.spotify.ruler")
 }
 
 android {
@@ -30,7 +31,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -67,6 +68,17 @@ android {
             excludes += "/META-INF/DEPENDENCIES"
         }
     }
+}
+
+ruler {
+    // Simulates a specific device environment
+    abi.set("arm64-v8a")
+    locale.set("en")
+    screenDensity.set(480) // XXHDPI
+    sdkVersion.set(30)
+
+    // Optional: Define ownership file for team-based profiling
+    ownershipFile.set(project.file("/home/giant-nova/SpendWise/ruler-ownership.yaml"))
 }
 
 dependencies {
@@ -143,7 +155,10 @@ dependencies {
     ksp("com.google.auto.value:auto-value-annotations:1.10.2")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.android.gms:play-services-ads:23.2.0")
+    implementation("com.google.android.gms:play-services-ads:23.6.0")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.justbaatAds:adsSdk:1.0.8")
 
     implementation("com.android.billingclient:billing-ktx:7.0.0")
     implementation("com.itextpdf.android:kernel-android:7.2.5")

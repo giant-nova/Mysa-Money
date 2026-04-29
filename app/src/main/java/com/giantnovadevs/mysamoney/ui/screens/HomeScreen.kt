@@ -194,7 +194,12 @@ fun HomeScreen(
                 )
             }
 
-            // --- 5. Recent Activity Header ---
+            // 5. Native ad placement
+            item {
+                AdMobNative(modifier = Modifier.fillMaxWidth())
+            }
+
+            // --- 6. Recent Activity Header ---
             item {
                 Row(
                     modifier = Modifier
@@ -220,7 +225,7 @@ fun HomeScreen(
                 }
             }
 
-// -        -- 6. List of Recent Expenses (Styled as Clean Tiles) ---
+// -        -- 7. List of Recent Expenses (Styled as Clean Tiles) ---
             items(expenses.take(3), key = { it.id }) { expense ->
                 val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "Unknown"
                 val dateString = remember(expense.date) {

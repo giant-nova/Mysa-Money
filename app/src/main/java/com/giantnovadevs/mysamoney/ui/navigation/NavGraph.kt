@@ -55,11 +55,23 @@ fun AppNavGraph(
         }
         composable("list") { ExpenseListScreen(navController, onMenuClick = onMenuClick, proViewModel) }
         composable("summary") { SummaryScreen(navController, onMenuClick = onMenuClick) }
-        composable("categories") { CategoryScreen(navController, onMenuClick = onMenuClick) }
+        composable("categories") {
+            CategoryScreen(
+                navController,
+                onMenuClick = onMenuClick,
+                proViewModel = proViewModel
+            )
+        }
         composable("about") {
             AboutScreen(navController, onMenuClick = onMenuClick)
         }
-        composable("budgets") { BudgetScreen(navController, onMenuClick = onMenuClick) }
+        composable("budgets") {
+            BudgetScreen(
+                navController,
+                onMenuClick = onMenuClick,
+                proViewModel = proViewModel
+            )
+        }
         composable("recurring_expenses") {
             RecurringExpenseScreen(
                 navController,
@@ -98,7 +110,8 @@ fun AppNavGraph(
             val incomeId = backStackEntry.arguments?.getString("id")
             AddIncomeScreen(
                 navController = navController,
-                incomeId = incomeId // Pass the ID
+                incomeId = incomeId,
+                proViewModel = proViewModel
             )
         }
 

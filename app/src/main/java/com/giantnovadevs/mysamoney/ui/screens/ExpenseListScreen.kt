@@ -1,6 +1,7 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
@@ -34,19 +35,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.giantnovadevs.mysamoney.ads.AdManager
 import com.giantnovadevs.mysamoney.data.Expense
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ExpenseViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.LoadAdError
 import kotlinx.coroutines.delay
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -74,6 +70,7 @@ fun ExpenseListScreen(
     val isPro by proViewModel.isProUser.collectAsState()
 
     val context = LocalContext.current
+    val adManager = remember(context) { AdManager(context) }
     var showExportDialog by remember { mutableStateOf(false) }
     var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
 
@@ -87,13 +84,35 @@ fun ExpenseListScreen(
 
     val onExportRequest = { format: String ->
         showExportDialog = false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            expVm.exportExpenses(format) { success, message ->
-                Toast.makeText(context, if (success) message else "Failed: $message", Toast.LENGTH_LONG).show()
+        val exportFile = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            ) {
+                expVm.exportExpenses(format) { success, message ->
+                    Toast.makeText(context, if (success) message else "Failed: $message", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
             }
+        }
+
+        if (isPro) {
+            exportFile()
         } else {
-            permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            val activity = context as? Activity
+            if (activity != null) {
+                adManager.showRewardedAd(activity) {
+                    exportFile()
+                }
+            } else {
+                exportFile()
+            }
+        }
+    }
+
+    LaunchedEffect(isPro) {
+        if (!isPro) {
+            adManager.loadRewardedAd()
         }
     }
 
@@ -136,7 +155,11 @@ fun ExpenseListScreen(
         bottomBar = {
             if (!isPro) {
                 Surface(color = AppBackground) {
-                    BannerAd(modifier = Modifier.padding(bottom = 16.dp))
+                    AdMobBanner(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
                 }
             }
         }
@@ -431,23 +454,4 @@ private fun ExportDialogRow(
             color = TextPrimary
         )
     }
-}
-
-@Composable
-private fun BannerAd(modifier: Modifier = Modifier) {
-    AndroidView(
-        modifier = modifier.fillMaxWidth(),
-        factory = { context ->
-            AdView(context).apply {
-                setAdSize(AdSize.BANNER)
-                adUnitId = "ca-app-pub-3940256099942544/6300978111"
-                adListener = object : AdListener() {
-                    override fun onAdFailedToLoad(adError: LoadAdError) {
-                        super.onAdFailedToLoad(adError)
-                    }
-                }
-                loadAd(AdRequest.Builder().build())
-            }
-        }
-    )
 }

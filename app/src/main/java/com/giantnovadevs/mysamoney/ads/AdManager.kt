@@ -15,8 +15,6 @@ class AdManager(private val context: Context) {
     private var isLoading = false
     private val TAG = "AdManager"
 
-    private val AD_UNIT_ID = "ca-app-pub-3940256099942544/5224354917"
-
     /**
      * Loads a new Rewarded Ad into memory.
      */
@@ -25,7 +23,7 @@ class AdManager(private val context: Context) {
         isLoading = true
 
         val adRequest = AdRequest.Builder().build()
-        RewardedAd.load(context, AD_UNIT_ID, adRequest, object : RewardedAdLoadCallback() {
+        RewardedAd.load(context, AdUnitIds.rewarded(context), adRequest, object : RewardedAdLoadCallback() {
             override fun onAdFailedToLoad(adError: LoadAdError) {
                 rewardedAd = null
                 isLoading = false

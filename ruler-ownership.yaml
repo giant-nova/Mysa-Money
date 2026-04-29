@@ -1,0 +1,13 @@
+# ruler-ownership.yaml
+
+- identifier: :app
+  owner: infra-team
+
+- identifier: :feature:login
+  owner: login-team
+
+- identifier: com.squareup.retrofit2:retrofit
+  owner: network-team
+
+- identifier: org.jetbrains.kotlin:*
+  owner: platform-team

@@ -1,4 +1,12 @@
 <resources>
     <string name="app_name">Mysa Money</string>
     <string name="your_web_client_id">589004510153-3rnm7e1cmmeao9o9mio22k0ucapc2tfd.apps.googleusercontent.com</string>
+    <string name="admob_app_id">ca-app-pub-9417663299385487~4948368095</string>
+    <string name="admob_banner_ad_unit_id">ca-app-pub-9417663299385487/5172154407</string>
+    <string name="admob_medium_rectangle_ad_unit_id">ca-app-pub-9417663299385487/5172154407</string>
+    <string name="admob_interstitial_ad_unit_id">ca-app-pub-9417663299385487/3286174002</string>
+    <string name="admob_rewarded_ad_unit_id">ca-app-pub-9417663299385487/7160181272</string>
+    <string name="admob_rewarded_interstitial_ad_unit_id">ca-app-pub-3940256099942544/5354046379</string> //test
+    <string name="admob_native_ad_unit_id">ca-app-pub-9417663299385487/5720765659</string>
+    <string name="admob_app_open_ad_unit_id">ca-app-pub-9417663299385487/4407683988</string>
 </resources>
