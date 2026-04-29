@@ -1,161 +1,255 @@
 package com.giantnovadevs.mysamoney.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Category // ✅ Now you can import this!
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Leaderboard // ✅ A better icon for "Summary"
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.collectAsState
 import com.giantnovadevs.mysamoney.BuildConfig
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 
+// --- Theme Colors ---
+private val DrawerBackground = Color(0xFFF6F7F9) // Slightly off-white for depth
+private val TextPrimary = Color(0xFF1A1C1E)
+private val TextSecondary = Color(0xFF72777F)
+
 @Composable
 fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose: () -> Unit) {
-    // ✅ Get the current route to show the selected item
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val isPro by proViewModel.isProUser.collectAsState()
-    ModalDrawerSheet {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                "Mysa Money",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            Divider()
-            Spacer(Modifier.height(16.dp))
+
+    ModalDrawerSheet(
+        drawerContainerColor = DrawerBackground,
+        drawerShape = RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 24.dp)
+        ) {
+            // --- 1. Header ---
+            DrawerHeader()
+
+            Spacer(Modifier.height(24.dp))
+
+            // --- 2. Pro Upgrade Banner ---
             if (!isPro) {
-                Button(
-                    onClick = { navController.navigate("upgrade"); onClose() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp)
-                ) {
-                    Icon(Icons.Filled.Star, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                    Text("Upgrade to Pro")
-                }
-                Divider()
+                PremiumUpgradeCard(onClick = {
+                    navController.navigate("upgrade")
+                    onClose()
+                })
+                Spacer(Modifier.height(16.dp))
             }
 
-            // ✅ Pass the current route to the DrawerItem
-            DrawerItem(
-                label = "Home",
-                icon = Icons.Default.Home,
-                isSelected = currentRoute == "home",
-                onClick = { navController.navigate("home"); onClose() }
-            )
-            DrawerItem(
-                label = "Add Expense",
-                icon = Icons.Default.Add,
-                isSelected = currentRoute?.startsWith("expense_entry") == true,
-                onClick = { navController.navigate("expense_entry?categoryId=null&expenseId=null"); onClose() }
-            )
-            DrawerItem(
-                label = "All Expenses",
-                icon = Icons.AutoMirrored.Filled.List,
-                isSelected = currentRoute == "list",
-                onClick = { navController.navigate("list"); onClose() }
-            )
-            DrawerItem(
-                label = "AI Coach",
-                icon = Icons.Default.AutoAwesome,
-                isSelected = currentRoute == "coach",
-                onClick = { navController.navigate("coach"); onClose() }
-            )
-            DrawerItem(
-                label = "Summary",
-                icon = Icons.Default.Leaderboard, // ✅ Better icon!
-                isSelected = currentRoute == "summary",
-                onClick = { navController.navigate("summary"); onClose() }
-            )
-            DrawerItem(
-                label = "Categories",
-                icon = Icons.Default.Category, // ✅ The icon you wanted!
-                isSelected = currentRoute == "categories",
-                onClick = { navController.navigate("categories"); onClose() }
-            )
-            DrawerItem(
-                label = "Budgets",
-                icon = Icons.Default.Savings, // A nice icon for budgets
-                isSelected = currentRoute == "budgets",
-                onClick = { navController.navigate("budgets"); onClose() }
-            )
-            DrawerItem(
-                label = "Subscriptions",
-                icon = Icons.Default.Refresh,
-                isSelected = currentRoute == "recurring_expenses",
-                onClick = { navController.navigate("recurring_expenses"); onClose() }
-            )
-            DrawerItem(
-                label = "Incomes",
-                icon = Icons.Default.TrendingUp,
-                isSelected = currentRoute == "incomes",
-                onClick = { navController.navigate("incomes"); onClose() }
-            )
-            DrawerItem(
-                label = "Settings",
-                icon = Icons.Default.Settings,
-                isSelected = currentRoute == "settings",
-                onClick = { navController.navigate("settings"); onClose() }
-            )
-            DrawerItem(
-                label = "About",
-                icon = Icons.Default.Info,
-                isSelected = currentRoute == "about",
-                onClick = { navController.navigate("about"); onClose() }
-            )
+            // --- 3. Dashboard Group ---
+            DrawerSectionTitle("Dashboard")
+            DrawerItem("Home", Icons.Default.Home, currentRoute == "home") {
+                navController.navigate("home"); onClose()
+            }
+            DrawerItem("Summary", Icons.Default.Leaderboard, currentRoute == "summary") {
+                navController.navigate("summary"); onClose()
+            }
+            DrawerItem("AI Coach", Icons.Default.AutoAwesome, currentRoute == "coach") {
+                navController.navigate("coach"); onClose()
+            }
 
-            Spacer(Modifier.weight(1f)) // This pushes the footer to the bottom
+            Spacer(Modifier.height(16.dp))
 
+            // --- 4. Tracking Group ---
+            DrawerSectionTitle("Tracking")
+            DrawerItem("All Expenses", Icons.AutoMirrored.Filled.List, currentRoute == "list") {
+                navController.navigate("list"); onClose()
+            }
+            DrawerItem("Incomes", Icons.Default.TrendingUp, currentRoute == "incomes") {
+                navController.navigate("incomes"); onClose()
+            }
+            DrawerItem("Subscriptions", Icons.Default.Refresh, currentRoute == "recurring_expenses") {
+                navController.navigate("recurring_expenses"); onClose()
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // --- 5. Manage Group ---
+            DrawerSectionTitle("Manage")
+            DrawerItem("Budgets", Icons.Default.Savings, currentRoute == "budgets") {
+                navController.navigate("budgets"); onClose()
+            }
+            DrawerItem("Categories", Icons.Default.Category, currentRoute == "categories") {
+                navController.navigate("categories"); onClose()
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // --- 6. App Group ---
+            HorizontalDivider(color = Color(0xFFEBEBEB), modifier = Modifier.padding(vertical = 8.dp))
+            DrawerItem("Settings", Icons.Default.Settings, currentRoute == "settings") {
+                navController.navigate("settings"); onClose()
+            }
+            DrawerItem("About", Icons.Default.Info, currentRoute == "about") {
+                navController.navigate("about"); onClose()
+            }
+
+            // --- Footer ---
+            Spacer(Modifier.weight(1f))
             DrawerFooter()
         }
     }
 }
 
 @Composable
-fun DrawerItem(
-    label: String,
-    icon: ImageVector,
-    isSelected: Boolean, // ✅ Added this
-    onClick: () -> Unit
-) {
-    NavigationDrawerItem(
-        label = { Text(label) },
-        selected = isSelected, // ✅ Check if this item is the selected one
-        icon = { Icon(icon, contentDescription = label) },
-        onClick = onClick,
-        // Add padding to make items cleaner
-        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+private fun DrawerHeader() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        // Chain the modifiers
+        modifier = Modifier
+            .padding(horizontal = 12.dp)
+            .padding(top = 12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.AccountBalanceWallet,
+                contentDescription = "Logo",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Column {
+            Text(
+                text = "Mysa Money",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+            Text(
+                text = "Your Financial Hub",
+                style = MaterialTheme.typography.labelMedium,
+                color = TextSecondary
+            )
+        }
+    }
+}
+@Composable
+private fun PremiumUpgradeCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            Color(0xFF8B5CF6) // A nice complimentary purple
+                        )
+                    )
+                )
+                .padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Star, contentDescription = "Pro", tint = Color.White, modifier = Modifier.size(28.dp))
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text("Unlock Pro", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("No ads, advanced tools.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DrawerSectionTitle(title: String) {
+    Text(
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = TextSecondary,
+        modifier = Modifier.padding(start = 16.dp, bottom = 8.dp, top = 8.dp)
     )
 }
 
 @Composable
-fun DrawerFooter() {
+private fun DrawerItem(
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    NavigationDrawerItem(
+        label = {
+            Text(
+                text = label,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+            )
+        },
+        selected = isSelected,
+        icon = { Icon(icon, contentDescription = label) },
+        onClick = onClick,
+        colors = NavigationDrawerItemDefaults.colors(
+            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+            selectedIconColor = MaterialTheme.colorScheme.primary,
+            selectedTextColor = MaterialTheme.colorScheme.primary,
+            unselectedContainerColor = Color.Transparent,
+            unselectedIconColor = TextSecondary,
+            unselectedTextColor = TextPrimary
+        ),
+        modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .height(48.dp)
+    )
+}
+
+@Composable
+private fun DrawerFooter() {
     val appVersion = BuildConfig.VERSION_NAME
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(top = 24.dp, bottom = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Divider(modifier = Modifier.padding(bottom = 16.dp))
-        Text("Version $appVersion", style = MaterialTheme.typography.bodySmall)
-        Text("Made with ❤️ in India", style = MaterialTheme.typography.bodySmall)
+        Text(
+            text = "Made with ❤️ in India",
+            style = MaterialTheme.typography.labelMedium,
+            color = TextSecondary
+        )
+        Text(
+            text = "Version $appVersion",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextSecondary.copy(alpha = 0.6f)
+        )
     }
 }
