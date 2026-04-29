@@ -33,6 +33,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.Category
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.absoluteValue
 
@@ -48,10 +49,12 @@ private val DeleteColor = Color(0xFFFF3B30)
 @Composable
 fun CategoryScreen(
     navController: NavController,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    proViewModel: ProViewModel
 ) {
     val catVm: CategoryViewModel = viewModel()
     val categories by catVm.categories.collectAsState()
+    val isPro by proViewModel.isProUser.collectAsState()
 
     // --- State ---
     var showAddDialog by remember { mutableStateOf(false) }
@@ -87,6 +90,17 @@ fun CategoryScreen(
                 shape = CircleShape
             ) {
                 Icon(Icons.Default.Add, "Add Category")
+            }
+        },
+        bottomBar = {
+            if (!isPro) {
+                Surface(color = AppBackground) {
+                    AdMobBanner(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
+                }
             }
         }
     ) { padding ->

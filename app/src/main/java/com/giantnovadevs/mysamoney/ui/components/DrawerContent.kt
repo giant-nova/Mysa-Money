@@ -1,5 +1,6 @@
 package com.giantnovadevs.mysamoney.ui.components
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,16 +21,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.runtime.collectAsState
 import com.giantnovadevs.mysamoney.BuildConfig
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
+import com.google.android.gms.ads.MobileAds
 
 // --- Theme Colors ---
-private val DrawerBackground = Color(0xFFF6F7F9) // Slightly off-white for depth
+private val DrawerBackground = Color(0xFFF6F7F9)
 private val TextPrimary = Color(0xFF1A1C1E)
 private val TextSecondary = Color(0xFF72777F)
 
@@ -37,6 +40,7 @@ fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose:
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val isPro by proViewModel.isProUser.collectAsState()
+    val context = LocalContext.current
 
     ModalDrawerSheet(
         drawerContainerColor = DrawerBackground,
@@ -109,6 +113,14 @@ fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose:
             DrawerItem("About", Icons.Default.Info, currentRoute == "about") {
                 navController.navigate("about"); onClose()
             }
+            DrawerItem("Ad Inspector", Icons.Default.Build, false) {
+                MobileAds.openAdInspector(context) { error ->
+                    if (error != null) {
+                        Toast.makeText(context, "Ad Inspector failed: ${error.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                onClose()
+            }
 
             // --- Footer ---
             Spacer(Modifier.weight(1f))
@@ -121,7 +133,6 @@ fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose:
 private fun DrawerHeader() {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        // Chain the modifiers
         modifier = Modifier
             .padding(horizontal = 12.dp)
             .padding(top = 12.dp)
@@ -156,6 +167,7 @@ private fun DrawerHeader() {
         }
     }
 }
+
 @Composable
 private fun PremiumUpgradeCard(onClick: () -> Unit) {
     Card(
@@ -168,12 +180,12 @@ private fun PremiumUpgradeCard(onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth() //
+                .fillMaxWidth()
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
                             MaterialTheme.colorScheme.primary,
-                            Color(0xFF8B5CF6) // A nice complimentary purple
+                            Color(0xFF8B5CF6)
                         )
                     )
                 )

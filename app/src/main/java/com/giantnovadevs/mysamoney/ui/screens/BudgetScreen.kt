@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,7 @@ import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.Category
 import com.giantnovadevs.mysamoney.viewmodel.BudgetViewModel
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import kotlin.math.absoluteValue
 
 // --- Theme Colors ---
@@ -43,13 +45,15 @@ private val SaveColor = Color(0xFF34C759) // Nice Green
 @Composable
 fun BudgetScreen(
     navController: NavController,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    proViewModel: ProViewModel
 ) {
     val catVm: CategoryViewModel = viewModel()
     val budgetVm: BudgetViewModel = viewModel()
 
     val categories by catVm.categories.collectAsState()
     val budgets by budgetVm.budgetsForSelectedMonth.collectAsState()
+    val isPro by proViewModel.isProUser.collectAsState()
 
     Scaffold(
         containerColor = AppBackground,
@@ -80,7 +84,7 @@ fun BudgetScreen(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(categories, key = { it.id }) { category ->
+            itemsIndexed(categories, key = { _, category -> category.id }) { index, category ->
                 val existingBudgetAmount = budgets.find { it.categoryId == category.id }?.amount ?: 0.0
 
                 BudgetRow(
@@ -90,6 +94,10 @@ fun BudgetScreen(
                         budgetVm.setBudget(category.id, newAmount)
                     }
                 )
+
+                if (!isPro && (index + 1) % 2 == 0) {
+                    AdMobNative(modifier = Modifier.fillMaxWidth())
+                }
             }
 
             item { Spacer(modifier = Modifier.height(40.dp)) }

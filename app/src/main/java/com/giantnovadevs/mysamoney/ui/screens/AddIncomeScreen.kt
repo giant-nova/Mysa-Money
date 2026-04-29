@@ -1,5 +1,6 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
+import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -29,7 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.Income
+import com.giantnovadevs.mysamoney.ads.RewardedInterstitialAdManager
 import com.giantnovadevs.mysamoney.viewmodel.IncomeViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -46,10 +50,13 @@ private val TextSecondary = Color(0xFF72777F)
 @Composable
 fun AddIncomeScreen(
     navController: NavController,
-    incomeId: String?
+    incomeId: String?,
+    proViewModel: ProViewModel
 ) {
     val incomeVm: IncomeViewModel = viewModel()
+    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val isPro by proViewModel.isProUser.collectAsState()
 
     val isEditMode = incomeId != null
     var incomeToEdit by remember { mutableStateOf<Income?>(null) }
@@ -64,6 +71,12 @@ fun AddIncomeScreen(
     // Validation
     val isFormValid by remember(amount, note) {
         mutableStateOf((amount.toDoubleOrNull() ?: 0.0) > 0 && note.isNotBlank())
+    }
+
+    LaunchedEffect(isPro) {
+        if (!isPro) {
+            RewardedInterstitialAdManager.load(context)
+        }
     }
 
     // --- Load Data for Edit Mode ---
@@ -186,6 +199,11 @@ fun AddIncomeScreen(
                             note = note,
                             date = selectedDate
                         )
+                    }
+                    if (!isPro) {
+                        (context as? Activity)?.let { activity ->
+                            RewardedInterstitialAdManager.showIfAvailable(activity)
+                        }
                     }
                     navController.popBackStack()
                 },

@@ -1,6 +1,7 @@
 package com.giantnovadevs.mysamoney.ui.screens
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
@@ -40,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.Category
 import com.giantnovadevs.mysamoney.data.Expense
+import com.giantnovadevs.mysamoney.ads.InterstitialAdManager
 import com.giantnovadevs.mysamoney.ml.TextRecognitionHelper
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ExpenseViewModel
@@ -90,6 +92,12 @@ fun AddExpenseScreen(
     // Pro Features
     val isPro by proViewModel.isProUser.collectAsState()
     val freeScans by proViewModel.freeScansRemaining.collectAsState()
+
+    LaunchedEffect(isPro) {
+        if (!isPro) {
+            InterstitialAdManager.load(context)
+        }
+    }
 
     val isFormValid by remember(amount, selectedCat) {
         mutableStateOf((amount.toDoubleOrNull() ?: 0.0) > 0 && selectedCat != null)
@@ -310,6 +318,9 @@ fun AddExpenseScreen(
                     if (isEditMode) expVm.updateExpense(expenseData)
                     else expVm.addExpense(expenseData)
 
+                    if (!isPro) {
+                        (context as? Activity)?.let { InterstitialAdManager.showIfAvailable(it) }
+                    }
                     navController.popBackStack()
                 },
                 enabled = isFormValid,

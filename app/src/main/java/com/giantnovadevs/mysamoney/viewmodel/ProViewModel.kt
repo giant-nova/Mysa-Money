@@ -5,6 +5,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.giantnovadevs.mysamoney.billing.BillingManager
+import com.giantnovadevs.mysamoney.config.ProUserGate
 import com.giantnovadevs.mysamoney.data.PreferencesManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,14 +19,13 @@ class ProViewModel(app: Application) : AndroidViewModel(app) {
     private val preferencesManager = PreferencesManager(app)
     private val billingManager = BillingManager(app)
 
-    // This is the "single source of truth" for Pro status.
-    // It combines the saved preference (fast check) with the
-    // real-time check from the BillingManager (slower, but authoritative).
+    // Single source of truth for Pro status across the app.
+    // Uses ProUserGate, which also supports one-place test override.
     val isProUser = combine(
         preferencesManager.isProUser,
         billingManager.isProUser
     ) { savedStatus, billingStatus ->
-        savedStatus || billingStatus // If either is true, they are Pro
+        ProUserGate.resolve(savedStatus, billingStatus)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     // Expose the product details (like "₹199") to the UI
