@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -92,17 +93,6 @@ fun CategoryScreen(
                 Icon(Icons.Default.Add, "Add Category")
             }
         },
-        bottomBar = {
-            if (!isPro) {
-                Surface(color = AppBackground) {
-                    AdMobBanner(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                    )
-                }
-            }
-        }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -111,7 +101,7 @@ fun CategoryScreen(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(categories, key = { it.id }) { category ->
+            itemsIndexed(categories, key = { _, category -> category.id }) { index, category ->
                 // --- SWIPE TO DELETE LOGIC ---
                 val dismissState = rememberSwipeToDismissBoxState(
                     confirmValueChange = { value ->
@@ -126,7 +116,6 @@ fun CategoryScreen(
 
                 SwipeToDismissBox(
                     state = dismissState,
-                    // ✅ FIXED: Renamed function call
                     backgroundContent = { CategoryDeleteBackground(dismissState) },
                     content = {
                         CategoryListTile(
@@ -136,6 +125,10 @@ fun CategoryScreen(
                     },
                     enableDismissFromStartToEnd = false
                 )
+
+                if (!isPro && (index + 1) % 3 == 0) {
+                    AdMobBanner(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                }
             }
         }
     }

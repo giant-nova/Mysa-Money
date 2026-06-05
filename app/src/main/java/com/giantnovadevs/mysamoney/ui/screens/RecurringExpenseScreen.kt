@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.RecurringExpense
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.RecurringExpenseViewModel
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -53,12 +55,14 @@ private val DeleteColor = Color(0xFFFF3B30)
 fun RecurringExpenseScreen(
     navController: NavController,
     onMenuClick: () -> Unit,
+    proViewModel: ProViewModel
 ) {
     val recurringVm: RecurringExpenseViewModel = viewModel()
     val catVm: CategoryViewModel = viewModel()
 
     val recurringExpenses by recurringVm.recurringExpenses.collectAsState()
     val categories by catVm.categories.collectAsState()
+    val isPro by proViewModel.isProUser.collectAsState()
 
     // State for delete confirmation
     var expenseToDelete by remember { mutableStateOf<RecurringExpense?>(null) }
@@ -112,7 +116,7 @@ fun RecurringExpenseScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(recurringExpenses, key = { it.id }) { expense ->
+                    itemsIndexed(recurringExpenses, key = { _, expense -> expense.id }) { index, expense ->
                         val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "General"
 
                         // --- SWIPE TO DELETE ---
@@ -139,6 +143,16 @@ fun RecurringExpenseScreen(
                             },
                             enableDismissFromStartToEnd = false
                         )
+
+                        if (!isPro && (index + 1) % 3 == 0) {
+                            AdMobNative(modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+
+                    if (!isPro) {
+                        item {
+                            AdMobNative(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                        }
                     }
 
                     // Spacer for FAB

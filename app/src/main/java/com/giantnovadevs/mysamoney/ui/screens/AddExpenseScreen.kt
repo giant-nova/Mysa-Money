@@ -340,6 +340,11 @@ fun AddExpenseScreen(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 )
             }
+
+            if (!isPro) {
+                Spacer(modifier = Modifier.height(16.dp))
+                AdMobNative(modifier = Modifier.fillMaxWidth())
+            }
         }
     }
 

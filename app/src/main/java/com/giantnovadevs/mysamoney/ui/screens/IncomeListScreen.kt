@@ -30,6 +30,7 @@ import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.data.Income
 import com.giantnovadevs.mysamoney.ui.theme.Success // Your custom Success color
 import com.giantnovadevs.mysamoney.viewmodel.IncomeViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -47,10 +48,12 @@ private val DeleteColor = Color(0xFFFF3B30)
 @Composable
 fun IncomeListScreen(
     navController: NavController,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    proViewModel: ProViewModel
 ) {
     val incomeVm: IncomeViewModel = viewModel()
     val incomes by incomeVm.allIncomes.collectAsState()
+    val isPro by proViewModel.isProUser.collectAsState()
 
     // State for delete confirmation
     var incomeToDelete by remember { mutableStateOf<Income?>(null) }
@@ -129,6 +132,12 @@ fun IncomeListScreen(
                             },
                             enableDismissFromStartToEnd = false
                         )
+                    }
+
+                    if (!isPro) {
+                        item {
+                            AdMobNative(modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                        }
                     }
                 }
             }
