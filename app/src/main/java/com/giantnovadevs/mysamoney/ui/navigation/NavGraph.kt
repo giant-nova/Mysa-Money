@@ -54,7 +54,7 @@ fun AppNavGraph(
             )
         }
         composable("list") { ExpenseListScreen(navController, onMenuClick = onMenuClick, proViewModel) }
-        composable("summary") { SummaryScreen(navController, onMenuClick = onMenuClick) }
+        composable("summary") { SummaryScreen(navController, onMenuClick = onMenuClick, proViewModel = proViewModel) }
         composable("categories") {
             CategoryScreen(
                 navController,
@@ -75,7 +75,8 @@ fun AppNavGraph(
         composable("recurring_expenses") {
             RecurringExpenseScreen(
                 navController,
-                onMenuClick = onMenuClick
+                onMenuClick = onMenuClick,
+                proViewModel = proViewModel
             )
         }
 
@@ -95,7 +96,7 @@ fun AppNavGraph(
             )
         }
         composable("incomes") {
-            IncomeListScreen(navController, onMenuClick = onMenuClick)
+            IncomeListScreen(navController, onMenuClick = onMenuClick, proViewModel = proViewModel)
         }
 
         composable(

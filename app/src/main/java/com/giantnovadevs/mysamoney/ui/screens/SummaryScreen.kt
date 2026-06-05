@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +35,7 @@ import com.giantnovadevs.mysamoney.data.CategoryTotal
 import com.giantnovadevs.mysamoney.viewmodel.BudgetViewModel
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ExpenseViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import java.text.DecimalFormat
 import java.time.LocalDate
 import java.time.YearMonth
@@ -51,11 +53,13 @@ private val TextSecondary = Color(0xFF72777F)
 @Composable
 fun SummaryScreen(
     navController: NavController,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    proViewModel: ProViewModel
 ) {
     val catVm: CategoryViewModel = viewModel()
     val budgetVm: BudgetViewModel = viewModel()
     val expenseVm: ExpenseViewModel = viewModel()
+    val isPro by proViewModel.isProUser.collectAsState()
 
     // Data collection
     val categories by catVm.categories.collectAsState()
@@ -150,7 +154,7 @@ fun SummaryScreen(
             // 3. Content
             Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
                 when (selectedTabIndex) {
-                    0 -> BudgetProgressTab(categories, budgets, categoryTotals)
+                    0 -> BudgetProgressTab(categories, budgets, categoryTotals, isPro)
                     // ✅ FIX: Now passing the parsed YearMonth object
                     1 -> AllSpendingTab(categoryTotals, categories, selectedYearMonth)
                 }
@@ -413,7 +417,8 @@ private fun getCategoryColor(name: String): Color {
 private fun BudgetProgressTab(
     categories: List<Category>,
     budgets: List<com.giantnovadevs.mysamoney.data.Budget>,
-    categoryTotals: List<CategoryTotal>
+    categoryTotals: List<CategoryTotal>,
+    isPro: Boolean
 ) {
     val budgetedCategories = categories.filter { category ->
         budgets.any { it.categoryId == category.id }
@@ -426,11 +431,15 @@ private fun BudgetProgressTab(
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(budgetedCategories, key = { it.id }) { category ->
+            itemsIndexed(budgetedCategories, key = { _, category -> category.id }) { index, category ->
                 val budget = budgets.find { it.categoryId == category.id }!!
                 val totalSpent = categoryTotals.find { it.categoryId == category.id }?.total ?: 0.0
 
                 BudgetProgressCard(category, totalSpent, budget.amount)
+
+                if (!isPro && (index + 1) % 3 == 0) {
+                    AdMobBanner(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                }
             }
         }
     }

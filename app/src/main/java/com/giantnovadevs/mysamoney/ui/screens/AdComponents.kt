@@ -6,18 +6,18 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.giantnovadevs.mysamoney.ads.AdUnitIds
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import com.google.android.gms.ads.AdLoader
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
@@ -44,17 +44,11 @@ fun AdMobBanner(modifier: Modifier = Modifier) {
 fun AdMobNative(modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
-    Card(
+    AndroidView(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 2.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        AndroidView(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            factory = {
+            .background(Color(0xFFF6F7F9)),
+        factory = {
                 val nativeAdView = NativeAdView(context).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -78,9 +72,8 @@ fun AdMobNative(modifier: Modifier = Modifier) {
                 val mediaView = MediaView(context).apply {
                     layoutParams = LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        context.dpToPx(140)
+                        context.dpToPx(200)
                     )
-                    setPadding(24, 0, 24, 0)
                     visibility = View.GONE
                 }
 
@@ -118,7 +111,13 @@ fun AdMobNative(modifier: Modifier = Modifier) {
                         ctaButton.text = ctaText ?: ""
                         ctaButton.visibility = if (ctaText.isNullOrBlank()) View.GONE else View.VISIBLE
 
-                        mediaView.visibility = if (nativeAd.mediaContent != null) View.VISIBLE else View.GONE
+                        val media = nativeAd.mediaContent
+                        if (media != null) {
+                            mediaView.setMediaContent(media)
+                            mediaView.visibility = View.VISIBLE
+                        } else {
+                            mediaView.visibility = View.GONE
+                        }
 
                         nativeAdView.setNativeAd(nativeAd)
                     }
@@ -128,7 +127,6 @@ fun AdMobNative(modifier: Modifier = Modifier) {
                 nativeAdView
             }
         )
-    }
 }
 
 @Composable

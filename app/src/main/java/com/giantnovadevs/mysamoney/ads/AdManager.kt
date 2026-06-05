@@ -41,9 +41,10 @@ class AdManager(private val context: Context) {
      * @param onRewardEarned A callback function to be executed when the user
      * successfully finishes the ad.
      */
-    fun showRewardedAd(activity: Activity, onRewardEarned: () -> Unit) {
+    fun showRewardedAd(activity: Activity, onAdNotAvailable: () -> Unit = {}, onRewardEarned: () -> Unit) {
         if (rewardedAd == null) {
             loadRewardedAd()
+            onAdNotAvailable()
             return
         }
 

@@ -95,8 +95,8 @@ fun BudgetScreen(
                     }
                 )
 
-                if (!isPro && (index + 1) % 2 == 0) {
-                    AdMobNative(modifier = Modifier.fillMaxWidth())
+                if (!isPro && (index + 1) % 3 == 0) {
+                    AdMobBanner(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
                 }
             }
 

@@ -19,6 +19,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -82,30 +83,36 @@ fun ExpenseListScreen(
         else Toast.makeText(context, "Permission denied.", Toast.LENGTH_SHORT).show()
     }
 
+    val doExport = { format: String ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        ) {
+            expVm.exportExpenses(format) { success, message ->
+                Toast.makeText(context, if (success) message else "Failed: $message", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+    }
+
     val onExportRequest = { format: String ->
         showExportDialog = false
-        val exportFile = {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
-                ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-            ) {
-                expVm.exportExpenses(format) { success, message ->
-                    Toast.makeText(context, if (success) message else "Failed: $message", Toast.LENGTH_LONG).show()
-                }
-            } else {
-                permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
-        }
+        doExport(format)
+    }
 
+    val onExportIconClick = {
         if (isPro) {
-            exportFile()
+            showExportDialog = true
         } else {
             val activity = context as? Activity
             if (activity != null) {
-                adManager.showRewardedAd(activity) {
-                    exportFile()
-                }
+                adManager.showRewardedAd(
+                    activity = activity,
+                    onAdNotAvailable = { showExportDialog = true },
+                    onRewardEarned = { showExportDialog = true }
+                )
             } else {
-                exportFile()
+                showExportDialog = true
             }
         }
     }
@@ -132,7 +139,7 @@ fun ExpenseListScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showExportDialog = true }) {
+                    IconButton(onClick = { onExportIconClick() }) {
                         Icon(Icons.Default.IosShare, contentDescription = "Export", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
@@ -152,17 +159,6 @@ fun ExpenseListScreen(
                 Icon(Icons.Default.Add, contentDescription = "Add Expense")
             }
         },
-        bottomBar = {
-            if (!isPro) {
-                Surface(color = AppBackground) {
-                    AdMobBanner(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                    )
-                }
-            }
-        }
     ) { padding ->
         Crossfade(
             targetState = expenses.isEmpty(),
@@ -177,17 +173,15 @@ fun ExpenseListScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(expenses, key = { it.id }) { expense ->
+                    itemsIndexed(expenses, key = { _, expense -> expense.id }) { index, expense ->
                         val categoryName = categories.find { it.id == expense.categoryId }?.name ?: "General"
 
                         // --- SWIPE TO DELETE LOGIC ---
-                        var isRemoved by remember { mutableStateOf(false) }
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
                                 if (value == SwipeToDismissBoxValue.EndToStart) {
-                                    // Trigger confirmation dialog instead of deleting immediately
                                     expenseToDelete = expense
-                                    false // Return false to snap back the row while dialog shows
+                                    false
                                 } else {
                                     false
                                 }
@@ -204,8 +198,12 @@ fun ExpenseListScreen(
                                     onClick = { navController.navigate("expense_entry?expenseId=${expense.id}") }
                                 )
                             },
-                            enableDismissFromStartToEnd = false // Only swipe right-to-left
+                            enableDismissFromStartToEnd = false
                         )
+
+                        if (!isPro && (index + 1) % 3 == 0) {
+                            AdMobBanner(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                        }
                     }
                 }
             }

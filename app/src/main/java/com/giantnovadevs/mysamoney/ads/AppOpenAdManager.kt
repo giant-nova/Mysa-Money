@@ -11,6 +11,8 @@ object AppOpenAdManager {
     private var appOpenAd: AppOpenAd? = null
     private var isLoading = false
     private var isShowingAd = false
+    private var pendingShow = false
+    private var pendingActivity: Activity? = null
 
     fun load(context: Context) {
         if (isLoading || appOpenAd != null) return
@@ -24,11 +26,18 @@ object AppOpenAdManager {
                 override fun onAdLoaded(ad: AppOpenAd) {
                     appOpenAd = ad
                     isLoading = false
+                    if (pendingShow) {
+                        pendingShow = false
+                        pendingActivity?.let { showIfAvailable(it) }
+                        pendingActivity = null
+                    }
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     appOpenAd = null
                     isLoading = false
+                    pendingShow = false
+                    pendingActivity = null
                 }
             }
         )
@@ -39,8 +48,13 @@ object AppOpenAdManager {
 
         val ad = appOpenAd
         if (ad == null) {
+            if (isLoading) {
+                pendingShow = true
+                pendingActivity = activity
+            } else {
+                load(activity)
+            }
             onDismissed?.invoke()
-            load(activity)
             return
         }
 
