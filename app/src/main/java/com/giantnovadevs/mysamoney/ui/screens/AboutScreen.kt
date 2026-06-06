@@ -17,6 +17,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.giantnovadevs.mysamoney.BuildConfig
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 
 // --- Theme Colors ---
 private val AppBackground = Color(0xFFF6F7F9)
@@ -41,11 +44,13 @@ private val TextSecondary = Color(0xFF72777F)
 @Composable
 fun AboutScreen(
     navController: NavController,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    proViewModel: ProViewModel
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current // Native Compose way to open links
     val appVersion = BuildConfig.VERSION_NAME
+    val isPro by proViewModel.isProUser.collectAsState()
 
     Scaffold(
         containerColor = AppBackground,
@@ -194,6 +199,10 @@ fun AboutScreen(
             }
 
             // --- 4. Footer ---
+            if (!isPro) {
+                AdMobBanner(modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+            }
             Spacer(Modifier.height(16.dp))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
