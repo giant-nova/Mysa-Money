@@ -63,7 +63,7 @@ fun AppNavGraph(
             )
         }
         composable("about") {
-            AboutScreen(navController, onMenuClick = onMenuClick)
+            AboutScreen(navController, onMenuClick = onMenuClick, proViewModel = proViewModel)
         }
         composable("budgets") {
             BudgetScreen(

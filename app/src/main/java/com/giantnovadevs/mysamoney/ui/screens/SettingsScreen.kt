@@ -225,6 +225,10 @@ fun SettingsScreen(
                 }
             }
 
+            if (!isPro) {
+                AdMobBanner(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+            }
+
             // --- 3. PRO UPGRADE ---
             if (!isPro) {
                 Card(

@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -107,7 +108,7 @@ fun IncomeListScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(incomes, key = { it.id }) { income ->
+                    itemsIndexed(incomes, key = { _, income -> income.id }) { index, income ->
 
                         // --- SWIPE TO DELETE ---
                         val dismissState = rememberSwipeToDismissBoxState(
@@ -132,6 +133,10 @@ fun IncomeListScreen(
                             },
                             enableDismissFromStartToEnd = false
                         )
+
+                        if (!isPro && (index + 1) % 3 == 0) {
+                            AdMobBanner(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                        }
                     }
 
                     if (!isPro) {
