@@ -163,7 +163,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:23.6.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
-    implementation("com.justbaatAds:adsSdk:1.0.8")
 
     implementation("com.android.billingclient:billing-ktx:7.0.0")
     implementation("com.itextpdf.android:kernel-android:7.2.5")

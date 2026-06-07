@@ -106,8 +106,10 @@ class BillingManager(private val context: Context) {
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
         ) { billingResult, purchases ->
+            Log.i(TAG, "queryPurchases: responseCode=${billingResult.responseCode}, count=${purchases.size}")
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                 for (purchase in purchases) {
+                    Log.i(TAG, "  purchase: products=${purchase.products}, state=${purchase.purchaseState}")
                     if (purchase.products.contains(PRO_PRODUCT_ID) && purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
                         _isProUser.value = true
                         acknowledgePurchase(purchase)
