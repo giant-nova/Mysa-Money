@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.giantnovadevs.mysamoney.BuildConfig
 import com.giantnovadevs.mysamoney.ads.AdManager
+import com.giantnovadevs.mysamoney.billing.EntitlementRepository
 import com.giantnovadevs.mysamoney.data.AppDatabase
 import com.giantnovadevs.mysamoney.data.ChatMessageEntity
 import com.giantnovadevs.mysamoney.data.PreferencesManager
@@ -75,10 +76,9 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     val messageCredits: StateFlow<Int> = preferencesManager.messageCredits
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 3)
 
-    // Eagerly-started, DataStore-backed — thread-safe StateFlow.value read from any
-    // dispatcher. Eliminates the unsynchronised `var isUserPro` + UI-callback race.
-    private val _isUserPro: StateFlow<Boolean> = preferencesManager.isProUser
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    // Shared singleton — same combined DataStore+billing flow as ProViewModel.
+    // Eliminates split-brain: UI badge and credit gate now always agree.
+    private val _isUserPro: StateFlow<Boolean> = EntitlementRepository.getInstance(app).isProUser
 
     init {
         adManager.loadRewardedAd()

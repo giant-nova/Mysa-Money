@@ -43,6 +43,7 @@ import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ExpenseViewModel
 import com.giantnovadevs.mysamoney.viewmodel.FinancialCoachViewModel
 import com.giantnovadevs.mysamoney.viewmodel.IncomeViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.RecurringExpenseViewModel
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.PieChart
@@ -69,7 +70,8 @@ private val TextSecondary = Color(0xFF72777F)
 fun HomeScreen(
     navController: NavController,
     onMenuClick: () -> Unit,
-    financialCoachViewModel: FinancialCoachViewModel
+    financialCoachViewModel: FinancialCoachViewModel,
+    proViewModel: ProViewModel
 ) {
     // --- ViewModels & Data ---
     val expenseVm: ExpenseViewModel = viewModel()
@@ -88,6 +90,7 @@ fun HomeScreen(
 
     val insight by financialCoachViewModel.dashboardInsight.collectAsState()
     val isInsightLoading by financialCoachViewModel.isLoading.collectAsState()
+    val isPro by proViewModel.isProUser.collectAsState()
 
     LaunchedEffect(Unit) { financialCoachViewModel.getDashboardInsight() }
 
@@ -194,9 +197,11 @@ fun HomeScreen(
                 )
             }
 
-            // 5. Native ad placement
-            item {
-                AdMobNative(modifier = Modifier.fillMaxWidth())
+            // 5. Native ad — only for non-Pro users
+            if (!isPro) {
+                item {
+                    AdMobNative(modifier = Modifier.fillMaxWidth())
+                }
             }
 
             // --- 6. Recent Activity Header ---

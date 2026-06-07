@@ -29,7 +29,7 @@ fun AppNavGraph(
     val financialCoachViewModel: FinancialCoachViewModel = viewModel()
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
-            HomeScreen(navController, onMenuClick, financialCoachViewModel)
+            HomeScreen(navController, onMenuClick, financialCoachViewModel, proViewModel)
         }
         composable(
             route = "expense_entry?categoryId={categoryId}&expenseId={expenseId}",

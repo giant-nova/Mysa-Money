@@ -169,9 +169,43 @@ fun SettingsScreen(
                 }
             }
 
-            // --- 2. BACKUP & SYNC ---
+            // --- 2. BACKUP & SYNC (Pro feature) ---
             SettingsCard(title = "Cloud Sync") {
-                if (account == null) {
+                if (!isPro) {
+                    // Non-Pro: show locked state with upgrade CTA
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = TextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Google Drive Backup",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                "Upgrade to Pro to enable cloud backup & restore.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = { navController.navigate("upgrade") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Text("Upgrade to Pro — $proPrice")
+                    }
+                } else if (account == null) {
                     Button(
                         onClick = { signInLauncher.launch(authViewModel.getSignInIntent()) },
                         modifier = Modifier.fillMaxWidth(),
