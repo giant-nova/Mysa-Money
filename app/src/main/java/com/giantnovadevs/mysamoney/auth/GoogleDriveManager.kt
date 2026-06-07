@@ -98,8 +98,12 @@ class GoogleDriveManager(
     }
 
     /**
-     * Downloads the backup file from Google Drive and replaces the
-     * local database.
+     * Downloads the backup file from Google Drive and replaces the local database.
+     *
+     * Writes to a temp file first so that a mid-download failure never leaves a
+     * corrupt DB. After a successful download the WAL and SHM sidecar files are
+     * deleted — without this, SQLite would try to apply the *old* WAL on top of
+     * the restored DB, producing incorrect or missing data on the next open.
      */
     suspend fun restoreDatabase(): Boolean {
         return try {
@@ -107,12 +111,25 @@ class GoogleDriveManager(
                 ?: throw Exception("No backup file found in Google Drive")
 
             val localDbFile = context.getDatabasePath(BACKUP_FILE_NAME)
+            val tempFile = java.io.File(localDbFile.parent, "$BACKUP_FILE_NAME.tmp")
 
-            // Download the file from Drive
-            FileOutputStream(localDbFile).use { outputStream ->
+            // Download into a temp file so we never half-write the live DB path
+            FileOutputStream(tempFile).use { outputStream ->
                 driveService.files().get(fileId)
                     .executeMediaAndDownloadTo(outputStream)
             }
+
+            // Remove old WAL/SHM so SQLite doesn't replay stale transactions
+            java.io.File(localDbFile.parent, "$BACKUP_FILE_NAME-wal").delete()
+            java.io.File(localDbFile.parent, "$BACKUP_FILE_NAME-shm").delete()
+
+            // Atomic rename — replaces the DB file in one filesystem op
+            if (!tempFile.renameTo(localDbFile)) {
+                // renameTo can fail across mount points; fall back to copy+delete
+                tempFile.copyTo(localDbFile, overwrite = true)
+                tempFile.delete()
+            }
+
             true
         } catch (e: Exception) {
             e.printStackTrace()

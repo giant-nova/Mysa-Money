@@ -168,11 +168,11 @@ abstract class AppDatabase : RoomDatabase() {
          * This is REQUIRED for a database restore to work.
          */
         fun closeInstance() {
-            INSTANCE?.let {
-                if (it.isOpen) {
-                    it.close()
+            synchronized(this) {
+                INSTANCE?.let {
+                    if (it.isOpen) it.close()
+                    INSTANCE = null
                 }
-                INSTANCE = null
             }
         }
     }

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -60,7 +61,7 @@ class BudgetViewModel(app: Application) : AndroidViewModel(app) {
      * Sets or updates a budget for a given category in the currently selected month.
      */
     fun setBudget(categoryId: Int, amount: Double) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val budget = Budget(
                 categoryId = categoryId,
                 monthYear = selectedMonthYear.value, // "2025-10"

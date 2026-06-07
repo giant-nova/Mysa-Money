@@ -17,8 +17,8 @@ class CategoryViewModel(app: Application) : AndroidViewModel(app) {
     private val dao = AppDatabase.getInstance(app).categoryDao()
 
     val categories: StateFlow<List<Category>> = dao.getAll().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    fun addCategory(name: String) = viewModelScope.launch { dao.insert(Category(name = name)) }
-    fun deleteCategory(category: Category) = viewModelScope.launch { dao.delete(category) }
+    fun addCategory(name: String) = viewModelScope.launch(Dispatchers.IO) { dao.insert(Category(name = name)) }
+    fun deleteCategory(category: Category) = viewModelScope.launch(Dispatchers.IO) { dao.delete(category) }
     fun updateCategory(category: Category) = viewModelScope.launch(Dispatchers.IO) {
         dao.update(category)
     }

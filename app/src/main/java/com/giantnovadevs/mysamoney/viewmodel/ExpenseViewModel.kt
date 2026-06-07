@@ -43,9 +43,9 @@ class ExpenseViewModel(app: Application) : AndroidViewModel(app) {
 
     val expenses = dao.getAllExpenses().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    fun addExpense(expense: Expense) = viewModelScope.launch { dao.insert(expense) }
+    fun addExpense(expense: Expense) = viewModelScope.launch(Dispatchers.IO) { dao.insert(expense) }
 
-    fun deleteExpense(expense: Expense) = viewModelScope.launch { dao.delete(expense) }
+    fun deleteExpense(expense: Expense) = viewModelScope.launch(Dispatchers.IO) { dao.delete(expense) }
 
     private val monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM")
     private val displayFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")

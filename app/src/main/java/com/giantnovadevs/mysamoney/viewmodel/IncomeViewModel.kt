@@ -68,7 +68,7 @@ class IncomeViewModel(app: Application) : AndroidViewModel(app) {
      * Deletes an income record.
      */
     fun deleteIncome(income: Income) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             dao.delete(income)
         }
     }

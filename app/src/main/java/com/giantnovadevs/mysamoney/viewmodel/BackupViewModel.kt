@@ -51,13 +51,14 @@ class BackupViewModel(app: Application) : AndroidViewModel(app) {
             _state.value = BackupRestoreState.LOADING
 
             try {
-                // 1. Close the database completely
-                AppDatabase.closeInstance()
+                // Checkpoint WAL into the main DB file so the backup file is
+                // fully consistent. Do NOT close the database — closing would
+                // invalidate every ViewModel's DAO reference and break the app.
+                AppDatabase.getInstance(getApplication())
+                    .openHelper.writableDatabase
+                    .execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
 
-                // 2. Perform the backup
                 val success = driveManager!!.backupDatabase()
-
-                // 3. Set the state
                 _state.value = if (success) BackupRestoreState.SUCCESS else BackupRestoreState.ERROR
 
             } catch (e: Exception) {
