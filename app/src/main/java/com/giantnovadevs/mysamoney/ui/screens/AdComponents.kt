@@ -95,9 +95,13 @@ fun AdMobNative(modifier: Modifier = Modifier) {
                 nativeAdView.addView(container)
 
                 nativeAdView.headlineView = headlineView
-                nativeAdView.mediaView = mediaView
                 nativeAdView.bodyView = bodyView
                 nativeAdView.callToActionView = ctaButton
+                // mediaView is NOT registered here — it starts GONE (0×0).
+                // Registering it now would make the AdMob validator measure 0×0
+                // and flag "MediaView too small for video". It is registered inside
+                // forNativeAd only when actual media content is present and the
+                // view is already VISIBLE with its full layout params applied.
 
                 val adLoader = AdLoader.Builder(context, AdUnitIds.native(context))
                     .forNativeAd { nativeAd ->
@@ -115,6 +119,9 @@ fun AdMobNative(modifier: Modifier = Modifier) {
                         if (media != null) {
                             mediaView.setMediaContent(media)
                             mediaView.visibility = View.VISIBLE
+                            // Register only now: view is VISIBLE with 200dp height,
+                            // so the validator sees a valid ≥120dp MediaView.
+                            nativeAdView.mediaView = mediaView
                         } else {
                             mediaView.visibility = View.GONE
                         }

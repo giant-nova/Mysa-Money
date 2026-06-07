@@ -31,26 +31,26 @@ class ExpenseWorkerRepository(private val db: AppDatabase) {
         val updatedRecurringExpenses = mutableListOf<RecurringExpense>()
 
         dueExpenses.forEach { recurringExpense ->
-            // Add a new item to the regular 'expenses' table
-            newExpensesToInsert.add(
-                Expense(
-                    amount = recurringExpense.amount,
-                    categoryId = recurringExpense.categoryId,
-                    note = recurringExpense.note,
-                    date = recurringExpense.nextDueDate
-                    // We skipped the 'accountId' feature, so this is correct
+            // Loop through ALL missed periods, not just the first one.
+            // If worker was delayed 3 weeks on a weekly expense, this inserts
+            // one expense per missed week in a single run and lands nextDueDate
+            // in the future so the expense isn't re-processed next time.
+            var currentDueDate = recurringExpense.nextDueDate
+            while (currentDueDate <= todayTimestamp) {
+                newExpensesToInsert.add(
+                    Expense(
+                        amount = recurringExpense.amount,
+                        categoryId = recurringExpense.categoryId,
+                        note = recurringExpense.note,
+                        date = currentDueDate
+                    )
                 )
-            )
+                currentDueDate = calculateNextDueDate(currentDueDate, recurringExpense.frequency)
+            }
 
-            // 3. Calculate the *next* due date
-            val nextDueDate = calculateNextDueDate(
-                lastDueDate = recurringExpense.nextDueDate,
-                frequency = recurringExpense.frequency
-            )
-
-            // 4. Update the recurring expense with its new due date
+            // nextDueDate is now the first future occurrence
             updatedRecurringExpenses.add(
-                recurringExpense.copy(nextDueDate = nextDueDate)
+                recurringExpense.copy(nextDueDate = currentDueDate)
             )
         }
 

@@ -32,6 +32,7 @@ import com.giantnovadevs.mysamoney.data.Category
 import com.giantnovadevs.mysamoney.data.Frequency
 import com.giantnovadevs.mysamoney.data.RecurringExpense
 import com.giantnovadevs.mysamoney.viewmodel.CategoryViewModel
+import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.RecurringExpenseViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -49,12 +50,14 @@ private val TextSecondary = Color(0xFF72777F)
 @Composable
 fun AddRecurringExpenseScreen(
     navController: NavController,
-    expenseId: String?
+    expenseId: String?,
+    proViewModel: ProViewModel
 ) {
     val recurringVm: RecurringExpenseViewModel = viewModel()
     val catVm: CategoryViewModel = viewModel()
     val categories by catVm.categories.collectAsState()
     val focusManager = LocalFocusManager.current
+    val isPro by proViewModel.isProUser.collectAsState()
 
     // Form State
     var amount by remember { mutableStateOf("") }
@@ -246,6 +249,11 @@ fun AddRecurringExpenseScreen(
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                     )
                 }
+            }
+
+            // --- Native Ad (free users only) ---
+            if (!isPro) {
+                AdMobNative(modifier = Modifier.fillMaxWidth())
             }
 
             // --- Save Button ---

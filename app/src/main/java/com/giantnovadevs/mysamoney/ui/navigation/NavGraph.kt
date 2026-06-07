@@ -92,7 +92,8 @@ fun AppNavGraph(
             val expenseId = backStackEntry.arguments?.getString("id")
             AddRecurringExpenseScreen(
                 navController = navController,
-                expenseId = expenseId
+                expenseId = expenseId,
+                proViewModel = proViewModel
             )
         }
         composable("incomes") {

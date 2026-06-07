@@ -23,8 +23,8 @@ android {
         applicationId = "com.giantnovadevs.mysamoney"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.2.1"
+        versionCode = 6
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -64,8 +64,13 @@ android {
 
     packaging {
         resources {
-            excludes += "/META-INF/{INDEX.LIST}"  // Exclude the specific file (use / for root path)
+            excludes += "/META-INF/{INDEX.LIST}"
             excludes += "/META-INF/DEPENDENCIES"
+        }
+        jniLibs {
+            // Store .so files uncompressed and page-aligned in the APK.
+            // Required for 16 KB page size compatibility (Android 15+).
+            useLegacyPackaging = false
         }
     }
 }
@@ -111,11 +116,11 @@ dependencies {
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
-    implementation("com.google.mlkit:text-recognition:16.0.0")
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 
     // For CameraX (the modern way to handle the camera)
     // We'll use this instead of the old intent-based method
-    val cameraxVersion = "1.3.4"
+    val cameraxVersion = "1.4.1"
     implementation("androidx.camera:camera-core:${cameraxVersion}")
     implementation("androidx.camera:camera-camera2:${cameraxVersion}")
     implementation("androidx.camera:camera-lifecycle:${cameraxVersion}")
