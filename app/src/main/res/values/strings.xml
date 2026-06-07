@@ -6,7 +6,7 @@
     <string name="admob_medium_rectangle_ad_unit_id">ca-app-pub-9417663299385487/5172154407</string>
     <string name="admob_interstitial_ad_unit_id">ca-app-pub-9417663299385487/3286174002</string>
     <string name="admob_rewarded_ad_unit_id">ca-app-pub-9417663299385487/7160181272</string>
-    <string name="admob_rewarded_interstitial_ad_unit_id">ca-app-pub-3940256099942544/5354046379</string> //test
+    <string name="admob_rewarded_interstitial_ad_unit_id">ca-app-pub-9417663299385487/3225335267</string> //test
     <string name="admob_native_ad_unit_id">ca-app-pub-9417663299385487/5720765659</string>
     <string name="admob_app_open_ad_unit_id">ca-app-pub-9417663299385487/4407683988</string>
 </resources>

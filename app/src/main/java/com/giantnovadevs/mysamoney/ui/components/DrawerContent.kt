@@ -1,6 +1,5 @@
 package com.giantnovadevs.mysamoney.ui.components
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,14 +20,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.giantnovadevs.mysamoney.BuildConfig
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
-import com.google.android.gms.ads.MobileAds
 
 // --- Theme Colors ---
 private val DrawerBackground = Color(0xFFF6F7F9)
@@ -40,7 +37,6 @@ fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose:
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val isPro by proViewModel.isProUser.collectAsState()
-    val context = LocalContext.current
 
     ModalDrawerSheet(
         drawerContainerColor = DrawerBackground,
@@ -113,15 +109,6 @@ fun AppDrawer(navController: NavController, proViewModel: ProViewModel, onClose:
             DrawerItem("About", Icons.Default.Info, currentRoute == "about") {
                 navController.navigate("about"); onClose()
             }
-            DrawerItem("Ad Inspector", Icons.Default.Build, false) {
-                MobileAds.openAdInspector(context) { error ->
-                    if (error != null) {
-                        Toast.makeText(context, "Ad Inspector failed: ${error.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                onClose()
-            }
-
             // --- Footer ---
             Spacer(Modifier.weight(1f))
             DrawerFooter()

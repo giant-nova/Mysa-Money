@@ -73,13 +73,12 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     val showAdDialog = _showAdDialog.asStateFlow()
 
     val messageCredits: StateFlow<Int> = preferencesManager.messageCredits
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 3)
 
-    private var isUserPro = false
-
-    fun setUserProStatus(isPro: Boolean) {
-        isUserPro = isPro
-    }
+    // Eagerly-started, DataStore-backed — thread-safe StateFlow.value read from any
+    // dispatcher. Eliminates the unsynchronised `var isUserPro` + UI-callback race.
+    private val _isUserPro: StateFlow<Boolean> = preferencesManager.isProUser
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     init {
         adManager.loadRewardedAd()
@@ -105,14 +104,16 @@ class FinancialCoachViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun askQuestion(question: String) {
+        if (_isLoading.value) return  // block double-send
+        val isUserPro = _isUserPro.value
         val currentCredits = messageCredits.value
         if (!isUserPro && currentCredits <= 0) {
             _showAdDialog.value = true
             return
         }
+        _isLoading.value = true  // set synchronously so a second call sees it immediately
 
         viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
             if (!isUserPro) {
                 updateMessageCredits(currentCredits - 1)
             }

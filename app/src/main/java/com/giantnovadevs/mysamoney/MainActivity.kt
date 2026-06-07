@@ -28,7 +28,6 @@ import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
 import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.RequestConfiguration
 
 class MainActivity : ComponentActivity() {
 
@@ -38,11 +37,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val requestConfiguration = RequestConfiguration.Builder()
-            .setTestDeviceIds(listOf("038ED7DC3BF534A11307D526E1C1A94B"))
-            .build()
-        MobileAds.setRequestConfiguration(requestConfiguration)
-
         AppOpenAdManager.load(this)
         setContent {
             val currentTheme by settingsViewModel.currentTheme.collectAsState()

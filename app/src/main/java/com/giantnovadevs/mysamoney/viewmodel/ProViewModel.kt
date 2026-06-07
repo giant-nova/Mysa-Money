@@ -21,12 +21,15 @@ class ProViewModel(app: Application) : AndroidViewModel(app) {
 
     // Single source of truth for Pro status across the app.
     // Uses ProUserGate, which also supports one-place test override.
+    // Eagerly so DataStore is read the moment the ViewModel is created,
+    // not deferred until the first UI subscriber. Avoids a "false" flash
+    // on launch for returning Pro users.
     val isProUser = combine(
         preferencesManager.isProUser,
         billingManager.isProUser
     ) { savedStatus, billingStatus ->
         ProUserGate.resolve(savedStatus, billingStatus)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     // Expose the product details (like "₹199") to the UI
     val proProductPrice = billingManager.proProductDetails.map {

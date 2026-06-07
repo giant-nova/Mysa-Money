@@ -69,8 +69,6 @@ fun FinancialCoachScreen(
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
 
-    LaunchedEffect(isPro) { viewModel.setUserProStatus(isPro) }
-
     // Scroll to bottom when new message arrives
     LaunchedEffect(chatHistory.size, isLoading) {
         if (chatHistory.isNotEmpty() || isLoading) {

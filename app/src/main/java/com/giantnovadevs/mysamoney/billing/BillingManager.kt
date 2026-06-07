@@ -39,6 +39,9 @@ class BillingManager(private val context: Context) {
             }
         } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
             Log.i(TAG, "User canceled the purchase flow.")
+        } else if (billingResult.responseCode == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED) {
+            // User already owns this — re-query to sync pro status
+            queryPurchases()
         } else {
             Log.e(TAG, "Purchase failed: ${billingResult.debugMessage}")
         }
