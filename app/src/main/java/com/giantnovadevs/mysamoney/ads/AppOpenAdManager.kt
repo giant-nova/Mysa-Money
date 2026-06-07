@@ -13,6 +13,7 @@ object AppOpenAdManager {
     private var isShowingAd = false
     private var pendingShow = false
     private var pendingActivity: Activity? = null
+    private var pendingShouldShow: (() -> Boolean)? = null
 
     fun load(context: Context) {
         if (isLoading || appOpenAd != null) return
@@ -27,8 +28,13 @@ object AppOpenAdManager {
                     appOpenAd = ad
                     isLoading = false
                     if (pendingShow) {
+                        val shouldShow = pendingShouldShow
                         pendingShow = false
-                        pendingActivity?.let { showIfAvailable(it) }
+                        pendingShouldShow = null
+                        // Re-check at show time — billing may have responded by now
+                        if (shouldShow?.invoke() != false) {
+                            pendingActivity?.let { showIfAvailable(it) }
+                        }
                         pendingActivity = null
                     }
                 }
@@ -38,19 +44,26 @@ object AppOpenAdManager {
                     isLoading = false
                     pendingShow = false
                     pendingActivity = null
+                    pendingShouldShow = null
                 }
             }
         )
     }
 
-    fun showIfAvailable(activity: Activity, onDismissed: (() -> Unit)? = null) {
+    /**
+     * @param shouldShow checked immediately AND again when the ad finishes loading (if still pending).
+     *                   Pass `{ !proViewModel.isProUser.value }` so late billing responses are respected.
+     */
+    fun showIfAvailable(activity: Activity, shouldShow: () -> Boolean = { true }, onDismissed: (() -> Unit)? = null) {
         if (isShowingAd) return
+        if (!shouldShow()) return
 
         val ad = appOpenAd
         if (ad == null) {
             if (isLoading) {
                 pendingShow = true
                 pendingActivity = activity
+                pendingShouldShow = shouldShow
             } else {
                 load(activity)
             }

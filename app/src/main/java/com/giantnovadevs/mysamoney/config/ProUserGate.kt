@@ -10,7 +10,7 @@ object ProUserGate {
      *
      * Change this one value when testing.
      */
-    val overrideForTesting: Boolean? = false
+    val overrideForTesting: Boolean? = null
 
     fun resolve(savedStatus: Boolean, billingStatus: Boolean): Boolean {
         return overrideForTesting ?: (savedStatus || billingStatus)

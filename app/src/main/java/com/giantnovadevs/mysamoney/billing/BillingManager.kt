@@ -110,7 +110,8 @@ class BillingManager(private val context: Context) {
                 for (purchase in purchases) {
                     if (purchase.products.contains(PRO_PRODUCT_ID) && purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
                         _isProUser.value = true
-                        acknowledgePurchase(purchase) // Acknowledge the purchase
+                        acknowledgePurchase(purchase)
+                        onPurchaseCompleted() // persist to DataStore so next launch is instant
                     }
                 }
             }

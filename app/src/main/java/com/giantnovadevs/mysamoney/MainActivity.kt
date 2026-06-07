@@ -26,7 +26,10 @@ import com.giantnovadevs.mysamoney.ui.theme.MysaMoneyTheme
 import com.giantnovadevs.mysamoney.viewmodel.AuthViewModel
 import com.giantnovadevs.mysamoney.viewmodel.ProViewModel
 import com.giantnovadevs.mysamoney.viewmodel.SettingsViewModel
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import com.google.android.gms.ads.MobileAds
 
 class MainActivity : ComponentActivity() {
@@ -52,6 +55,7 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
 
                 var showExitDialog by remember { mutableStateOf(false) }
+                val isPro by proViewModel.isProUser.collectAsState()
 
                 val navToHome: () -> Unit = {
                     navController.navigate("home") {
@@ -89,7 +93,7 @@ class MainActivity : ComponentActivity() {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            AdMobMediumRectangle()
+                            if (!isPro) AdMobMediumRectangle()
                             Card(
                                 shape = MaterialTheme.shapes.large,
                                 elevation = CardDefaults.cardElevation(8.dp)
@@ -145,6 +149,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        AppOpenAdManager.showIfAvailable(this)
+        lifecycleScope.launch {
+            // Wait up to 2s for DataStore + Play Billing to emit the real Pro status.
+            // After the first launch where billing confirms Pro, DataStore persists it,
+            // so subsequent launches resolve in <50ms from DataStore alone.
+            val isPro = withTimeoutOrNull(2_000) {
+                proViewModel.isProUser.first { it }
+            } != null
+            if (!isPro) {
+                // Pass the live predicate so if the ad is still loading when this runs,
+                // it re-checks isProUser at actual show time (catches late billing responses).
+                AppOpenAdManager.showIfAvailable(
+                    activity = this@MainActivity,
+                    shouldShow = { !proViewModel.isProUser.value }
+                )
+            }
+        }
     }
 }
