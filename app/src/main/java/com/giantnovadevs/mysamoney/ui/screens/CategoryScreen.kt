@@ -146,14 +146,13 @@ fun CategoryScreen(
         )
     }
 
-    if (categoryToEdit != null) {
+    categoryToEdit?.let { editing ->
         CategoryEditDialog(
             title = "Edit Category",
-            initialName = categoryToEdit!!.name,
+            initialName = editing.name,
             onDismiss = { categoryToEdit = null },
             onSave = { updatedName ->
-                val updatedCategory = categoryToEdit!!.copy(name = updatedName)
-                catVm.updateCategory(updatedCategory)
+                catVm.updateCategory(editing.copy(name = updatedName))
                 categoryToEdit = null
             }
         )

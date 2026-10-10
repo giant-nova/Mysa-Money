@@ -23,8 +23,8 @@ android {
         applicationId = "com.giantnovadevs.mysamoney"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.3.0"
+        versionCode = 7
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -165,6 +165,7 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
 
     implementation("com.android.billingclient:billing-ktx:7.0.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
     implementation("com.itextpdf.android:kernel-android:7.2.5")
     implementation("com.itextpdf.android:layout-android:7.2.5")
 

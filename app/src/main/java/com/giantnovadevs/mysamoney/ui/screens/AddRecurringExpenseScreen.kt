@@ -270,9 +270,9 @@ fun AddRecurringExpenseScreen(
                         val nextDue = recurringVm.calculateFirstDueDate(selectedDate, selectedFrequency)
                             .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-                        val updated = expenseToEdit!!.copy(
+                        val updated = (expenseToEdit ?: return@Button).copy(
                             amount = amt,
-                            categoryId = selectedCat!!.id,
+                            categoryId = selectedCat?.id ?: return@Button,
                             note = noteText,
                             frequency = selectedFrequency,
                             startDate = startDateMillis,
@@ -282,7 +282,7 @@ fun AddRecurringExpenseScreen(
                     } else {
                         recurringVm.addRecurringExpense(
                             amount = amt,
-                            categoryId = selectedCat!!.id,
+                            categoryId = selectedCat?.id ?: return@Button,
                             note = noteText,
                             frequency = selectedFrequency,
                             startDate = selectedDate

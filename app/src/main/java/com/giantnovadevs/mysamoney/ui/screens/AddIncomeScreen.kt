@@ -186,8 +186,9 @@ fun AddIncomeScreen(
                 onClick = {
                     val dateInMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-                    if (isEditMode && incomeToEdit != null) {
-                        val updatedIncome = incomeToEdit!!.copy(
+                    val editing = incomeToEdit
+                    if (isEditMode && editing != null) {
+                        val updatedIncome = editing.copy(
                             amount = amount.toDoubleOrNull() ?: 0.0,
                             note = note,
                             date = dateInMillis

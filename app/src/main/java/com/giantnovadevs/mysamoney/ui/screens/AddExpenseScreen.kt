@@ -304,13 +304,14 @@ fun AddExpenseScreen(
             // --- Save Button ---
             Button(
                 onClick = {
-                    val amt = amount.toDoubleOrNull()!!
+                    val amt = amount.toDoubleOrNull() ?: return@Button
+                    val cat = selectedCat ?: return@Button
                     val dateInMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
                     val expenseData = Expense(
-                        id = if (isEditMode) expenseToEdit!!.id else 0, // 0 is ignored by Room auto-generate
+                        id = if (isEditMode) expenseToEdit?.id ?: 0 else 0,
                         amount = amt,
-                        categoryId = selectedCat!!.id,
+                        categoryId = cat.id,
                         note = if (note.isBlank()) null else note,
                         date = dateInMillis
                     )
