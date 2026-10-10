@@ -59,7 +59,9 @@ class BillingManager(private val context: Context) {
 
     private val billingClient = BillingClient.newBuilder(context)
         .setListener(purchasesUpdatedListener)
-        .enablePendingPurchases()
+        .enablePendingPurchases(
+            PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()
+        )
         .build()
 
     /**
@@ -106,7 +108,8 @@ class BillingManager(private val context: Context) {
             ))
             .build()
 
-        billingClient.queryProductDetailsAsync(params) { result, details ->
+        billingClient.queryProductDetailsAsync(params) { result, detailsResult ->
+            val details = detailsResult.productDetailsList.orEmpty()
             if (result.responseCode == BillingClient.BillingResponseCode.OK && details.isNotEmpty()) {
                 _proProductDetails.value = details[0]
                 Log.i(TAG, "Product price: ${details[0].oneTimePurchaseOfferDetails?.formattedPrice}")
