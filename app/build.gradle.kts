@@ -7,6 +7,11 @@ if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
 
+// Global switch for Google's sample ad units. Debug builds only: set USE_TEST_ADS=false in
+// local.properties to exercise the real ad units from a debug install. Defaults to true.
+// Release builds ignore this and always use the real units.
+val useTestAds = localProperties.getProperty("USE_TEST_ADS", "true").trim().toBoolean()
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -41,11 +46,14 @@ android {
             // This reads the key and adds it to BuildConfig for "debug" builds
             val apiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
             buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+            buildConfigField("boolean", "USE_TEST_ADS", useTestAds.toString())
         }
         getByName("release") {
             // This reads the key and adds it to BuildConfig for "release" builds
             val apiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
             buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+            // Real ad units only. Test unit IDs live in src/debug and are not compiled into release.
+            buildConfigField("boolean", "USE_TEST_ADS", "false")
         }
     }
     compileOptions {
